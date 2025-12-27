@@ -16,15 +16,15 @@ def limpar_tela():
     os.system('cls' if os.name == 'nt' else 'clear')
 
 def mostrar_banner():
-    ascii_banner = pyfiglet.figlet_format("ARGENT-V5")
+    ascii_banner = pyfiglet.figlet_format("JARVIS-CLI")
     print(ascii_banner)
 
 def mostrar_banner_texto():
-    ascii_banner2 = pyfiglet.figlet_format("ARGENT - CHAT")
+    ascii_banner2 = pyfiglet.figlet_format("JARVIS - CHAT")
     print(ascii_banner2)
 
 def mostrar_banner_voz():
-    ascii_banner3 = pyfiglet.figlet_format("ARGENT - VOZ")
+    ascii_banner3 = pyfiglet.figlet_format("JARVIS - VOZ")
     print(ascii_banner3)
 
 def alterar_senha(username_atual):
@@ -161,10 +161,10 @@ def modo_texto(username):
     print("Modo texto ativado. Digite 'sair' para encerrar.")
     while True:
         try:
-            comando = input(f"{username}@ARGENT> ").strip()
+            comando = input(f"{username}@JARVIS> ").strip()
             cmd_lower = comando.lower()
             if cmd_lower == "sair":
-                print("Encerrando ARGENT.")
+                print("Encerrando JARVIS.")
                 return "sair"
             elif cmd_lower in ["cls", "limpar"]:
                 limpar_tela()
@@ -173,10 +173,10 @@ def modo_texto(username):
             else:
                 resposta = processar_comando(comando, username, modo='texto')
                 if resposta:
-                    print("ARGENT:", resposta)
+                    print("JARVIS:", resposta)
                 else:
                     resposta_gemini = responder_com_gemini(comando, username)
-                    print("ARGENT:", resposta_gemini)
+                    print("JARVIS:", resposta_gemini)
         except KeyboardInterrupt:
             print("\nDigite 'sair' para encerrar ou continue comandando.")
         except Exception as e:
@@ -204,13 +204,13 @@ class VoiceCommandProcessor:
                     print(f"Você: {comando}")
 
                     if comando.lower() == "sair":
-                        falar("Encerrando ARGENT.")
+                        falar("Encerrando JARVIS.")
                         self.running = False
                         break
 
                     resposta = processar_comando(comando, self.username, modo='voz')
                     if resposta:
-                        print(f"ARGENT: {resposta}")
+                        print(f"JARVIS: {resposta}")
                         falar(resposta)
 
                 except sr.WaitTimeoutError:
@@ -276,7 +276,7 @@ def main():
         print("1 - Modo voz")
         print("2 - Modo texto")
         print("3 - Configurações de usuário")
-        print("sair - Encerrar ARGENT")
+        print("sair - Encerrar JARVIS")
         escolha = input("Escolha: ").strip().lower()
 
         if escolha == "1":
@@ -293,7 +293,7 @@ def main():
                 username = novo_username
                 print(f"Sessão atualizada para o usuário: {username}")
         elif escolha == "sair":
-            falar("Encerrando ARGENT.")
+            falar("Encerrando JARVIS.")
             break
         else:
             print("Opção inválida.")
@@ -305,7 +305,7 @@ if __name__ == "__main__":
     try:
         main()
     except KeyboardInterrupt:
-        print("\nARGENT encerrado pelo usuário.")
+        print("\nJARVIS encerrado pelo usuário.")
     except Exception as e:
         print(f"Erro fatal: {e}")
     finally:

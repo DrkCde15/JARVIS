@@ -66,7 +66,7 @@ class VoiceCommandSystem:
 
     def speak(self, text: str):
         """Non-blocking speech with queue management"""
-        print(f"ARGENT: {text}")
+        print(f"JARVIS: {text}")
         
         if not self.engine:
             return
@@ -1114,7 +1114,7 @@ padroes = [
     (re.compile(r'\banalisar\s+site\s+(.+)', re.IGNORECASE), lambda m, u: analisar_site(m.group(1).strip(), u)),
     
     #Instalar e Desinstalar programas
-    (re.compile(r"\b(?:instalar|instale|baixar|baixa|quero instalar)\s+([a-zA-Z0-9\-\.]+)", re.IGNORECASE), 
+    (re.compile(r"\b(?:instalar|instale|quero instalar)\s+([a-zA-Z0-9\-\.]+)", re.IGNORECASE), 
      lambda m, u: instalar_programa_via_cmd_admin(m.group(1), u)),
     (re.compile(r"\b(?:desinstalar|remover|apagar)\s+([a-zA-Z0-9\-\.]+)", re.IGNORECASE), 
      lambda m, u: desinstalar_programa(m.group(1), u, 'texto')),

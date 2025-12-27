@@ -1,10 +1,10 @@
-# 🤖 A.R.G.E.N.T. — Advanced Responsive General-purpose Engineering & Neural Tool 
+# 🤖 J.A.R.V.I.S
 *Automação, produtividade, inteligência, tudo em um só lugar!*  
 
 ---
 
 ## 📖 Sobre o Projeto
-O **ARGENT** é um assistente pessoal inteligente desenvolvido em **Python** com integração à **IA Generativa (Gemini)**, suporte a **comandos de voz e texto** e múltiplas automações que facilitam o seu dia a dia(criação de agenda, instalação de programas, etc).
+O **JARVIS** é um assistente pessoal inteligente desenvolvido em **Python** com integração à **IA Generativa (Gemini)**, suporte a **comandos de voz e texto** e múltiplas automações que facilitam o seu dia a dia(criação de agenda, instalação de programas, etc).
 
 Seja para abrir aplicativos, analisar arquivos, criar códigos, instalar programas ou até executar comandos administrativos no Windows — o ARGENT faz tudo com agilidade e inteligência.
 
@@ -32,9 +32,7 @@ Seja para abrir aplicativos, analisar arquivos, criar códigos, instalar program
 - **Python**
 - **Google Gemini API** (IA generativa)
 - **LangChain** (Memória de conversas)
-- **PyAutoGUI** (Automação de tarefas)
 - **SQLite** (Banco de dados)
-- **Pandas / OpenPyXL** (Manipulação de planilhas)
 - **SpeechRecognition / pyttsx3** (Reconhecimento e síntese de voz)
 
 ---
@@ -44,13 +42,17 @@ Seja para abrir aplicativos, analisar arquivos, criar códigos, instalar program
 ### 1️⃣ Pré-requisitos
 - Python 3.10 ou superior instalado  
 - Chave da API Gemini no arquivo `.env`  
-- Instalar dependências:
 
-pip install -r requirements.txt
+- Criar ambiente virtual: 
+    `python -m venv venv` 
+
+- Instalar dependências:
+    `pip install -r requirements.txt`
 
 
 
 ## Júlio Cesar
-- Desenvolvedor e entusiasta de IA, automação, ciência de dados e segurança da informação.
+- Desenvolvedor de IA, automação, segurança da informação.
+- Trabalho como engeheiro de dados.
 - Contato: jcesarsantana215@gmail.com
 - LinkedIn: https://www.linkedin.com/in/julio-santana-ads/

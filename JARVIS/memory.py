@@ -22,9 +22,9 @@ if not API_KEY:
     raise ValueError("API KEY do Gemini não encontrada. Verifique seu .env")
 genai.configure(api_key=API_KEY)
 
-engine_chat     = create_engine("sqlite:///./data/memoria_argent.db")
-engine_usuarios = create_engine("sqlite:///./data/usuarios_argent.db")
-engine_logs     = create_engine("sqlite:///./data/logs_argent.db")
+engine_chat     = create_engine("sqlite:///./data/memoria_jarvis.db")
+engine_usuarios = create_engine("sqlite:///./data/usuarios_jarvis.db")
+engine_logs     = create_engine("sqlite:///./data/logs_jarvis.db")
 
 metadata_users = MetaData()
 metadata_logs = MetaData()
@@ -248,7 +248,7 @@ def limpar_memoria_do_usuario(username):
 
 def responder_com_gemini(input_usuario, username, tentativas=3, espera=10):
     try:
-        model = genai.GenerativeModel('gemini-1.5-flash')
+        model = genai.GenerativeModel('gemini-2.5-flash')
 
         if isinstance(input_usuario, dict) and "image_b64" in input_usuario:
             image_b64 = input_usuario["image_b64"]
@@ -262,15 +262,15 @@ def responder_com_gemini(input_usuario, username, tentativas=3, espera=10):
         memory = obter_memoria_do_usuario(username)
         mensagens = memory.chat_memory.messages[-8:]
         historico_formatado = "\n".join([
-            f"Usuário: {msg.content}" if isinstance(msg, HumanMessage) else f"ARGENT: {msg.content}"
+            f"Usuário: {msg.content}" if isinstance(msg, HumanMessage) else f"JARVIS: {msg.content}"
             for msg in mensagens
         ])
         prompt = (
-            "Você é o ARGENT, um assistente pessoal altamente inteligente, profissional e da respostas completas \n"
+            "Você é o JARVIS, um assistente pessoal altamente inteligente, profissional e da respostas completas \n"
             "Responda em português, sempre chamando o usuário de Senhor.\n"
             f"Histórico:\n{historico_formatado}\n"
             f"Usuário: {input_usuario}\n"
-            "ARGENT:"
+            "JARVIS:"
         )
         resposta = model.generate_content(prompt)
         texto_resposta = resposta.text.strip()
