@@ -1,186 +1,320 @@
-# A.R.G.E.N.T. — Advanced Responsive General-purpose Engineering & Neural Tool
-
 import os
 import sys
 import argparse
 import getpass
 import time
-import pyfiglet
-import speech_recognition as sr
 import threading
 from queue import Queue
+import speech_recognition as sr
 from commands import processar_comando, falar, checar_tarefas_atrasadas
 from memory import responder_com_gemini, criar_usuario, autenticar_usuario, atualizar_senha_usuario, atualizar_username_usuario, verificar_usuario_existe
+
+class Colors:
+    """Códigos ANSI para cores e estilos"""
+    # Gradiente azul -> roxo -> rosa
+    BLUE = '\033[38;5;39m'
+    CYAN = '\033[38;5;51m'
+    PURPLE = '\033[38;5;141m'
+    MAGENTA = '\033[38;5;199m'
+    PINK = '\033[38;5;213m'
+    
+    # Cores básicas
+    GRAY = '\033[38;5;240m'
+    WHITE = '\033[97m'
+    GREEN = '\033[92m'
+    YELLOW = '\033[93m'
+    RED = '\033[91m'
+    ORANGE = '\033[38;5;208m'
+    
+    # Estilos
+    BOLD = '\033[1m'
+    DIM = '\033[2m'
+    RESET = '\033[0m'
+    CLEAR_LINE = '\033[2K'
 
 def limpar_tela():
     os.system('cls' if os.name == 'nt' else 'clear')
 
-def mostrar_banner():
-    ascii_banner = pyfiglet.figlet_format("JARVIS-CLI")
-    print(ascii_banner)
+def mostrar_banner_principal():
+    """Banner principal do JARVIS com gradiente"""
+    banner = [
+        "     ██╗ █████╗ ██████╗ ██╗   ██╗██╗███████╗",
+        "     ██║██╔══██╗██╔══██╗██║   ██║██║██╔════╝",
+        "     ██║███████║██████╔╝██║   ██║██║███████╗",
+        "██   ██║██╔══██║██╔══██╗╚██╗ ██╔╝██║╚════██║",
+        "╚█████╔╝██║  ██║██║  ██║ ╚████╔╝ ██║███████║",
+        " ╚════╝ ╚═╝  ╚═╝╚═╝  ╚═╝  ╚═══╝  ╚═╝╚══════╝",
+    ]
+    
+    colors = [Colors.CYAN, Colors.BLUE, Colors.PURPLE, Colors.MAGENTA, Colors.PINK, Colors.PINK]
+    
+    print()
+    for i, line in enumerate(banner):
+        print(f"{colors[i]}{line}{Colors.RESET}")
+    print()
 
-def mostrar_banner_texto():
-    ascii_banner2 = pyfiglet.figlet_format("JARVIS - CHAT")
-    print(ascii_banner2)
+def mostrar_spinner(mensagem: str, duracao: float = 1.5):
+    """Animação de loading com spinner"""
+    frames = ['⠋', '⠙', '⠹', '⠸', '⠼', '⠴', '⠦', '⠧', '⠇', '⠏']
+    end_time = time.time() + duracao
+    i = 0
+    
+    while time.time() < end_time:
+        frame = frames[i % len(frames)]
+        print(f"\r{Colors.PURPLE}{frame}{Colors.RESET} {mensagem}...", end='', flush=True)
+        time.sleep(0.08)
+        i += 1
+    
+    print(f"\r{Colors.CLEAR_LINE}", end='', flush=True)
 
-def mostrar_banner_voz():
-    ascii_banner3 = pyfiglet.figlet_format("JARVIS - VOZ")
-    print(ascii_banner3)
+def print_box_message(titulo: str, mensagem: str, tipo: str = "info"):
+    """Imprime mensagem em caixa formatada"""
+    icons = {
+        "info": "ℹ",
+        "success": "✓",
+        "error": "✗",
+        "warning": "⚠",
+        "config": "⚙"
+    }
+    
+    color_map = {
+        "info": Colors.CYAN,
+        "success": Colors.GREEN,
+        "error": Colors.RED,
+        "warning": Colors.YELLOW,
+        "config": Colors.PURPLE
+    }
+    
+    icon = icons.get(tipo, "•")
+    color = color_map.get(tipo, Colors.CYAN)
+    
+    print(f"\n{color}{icon}{Colors.RESET} {Colors.BOLD}{titulo}{Colors.RESET}")
+    print(f"{Colors.GRAY}│{Colors.RESET} {mensagem}")
+    print()
+
+def mostrar_comandos_slash():
+    """Mostra os comandos disponíveis com /"""
+    comandos = {
+        '/help': 'Mostra todos os comandos disponíveis',
+        '/clear': 'Limpa a tela do terminal',
+        '/history': 'Exibe o histórico de comandos',
+        '/config': 'Abre configurações do usuário',
+        '/sair': 'Encerra o JARVIS',
+        '/voz': 'Ativa o modo de comando por voz',
+    }
+    
+    print(f"\n{Colors.BOLD}{Colors.PURPLE}📋 Comandos Disponíveis{Colors.RESET}\n")
+    for cmd, desc in comandos.items():
+        print(f"  {Colors.CYAN}{cmd:<15}{Colors.RESET} {Colors.GRAY}→{Colors.RESET} {desc}")
+    print()
+
+def mostrar_dicas():
+    """Mostra dicas de uso"""
+    print(f"{Colors.GRAY}╭─ Dicas para começar ───────────────────────────────────────╮{Colors.RESET}")
+    print(f"{Colors.GRAY}│{Colors.RESET} {Colors.WHITE}1.{Colors.RESET} Use {Colors.PURPLE}/comandos{Colors.RESET} para ver opções disponíveis         {Colors.GRAY}│{Colors.RESET}")
+    print(f"{Colors.GRAY}│{Colors.RESET} {Colors.WHITE}2.{Colors.RESET} Pergunte qualquer coisa ou execute tarefas            {Colors.GRAY}│{Colors.RESET}")
+    print(f"{Colors.GRAY}│{Colors.RESET} {Colors.WHITE}3.{Colors.RESET} Digite {Colors.PURPLE}/help{Colors.RESET} para mais informações                  {Colors.GRAY}│{Colors.RESET}")
+    print(f"{Colors.GRAY}╰────────────────────────────────────────────────────────────╯{Colors.RESET}")
+    print()
+
+def autenticar_usuario_interativo():
+    limpar_tela()
+    mostrar_banner_principal()
+    
+    print(f"{Colors.BOLD}{Colors.CYAN}🔐 AUTENTICAÇÃO{Colors.RESET}\n")
+    print(f"  {Colors.CYAN}1{Colors.RESET} {Colors.GRAY}→{Colors.RESET} Login")
+    print(f"  {Colors.CYAN}2{Colors.RESET} {Colors.GRAY}→{Colors.RESET} Criar Conta\n")
+    
+    escolha = input(f"{Colors.PURPLE}>{Colors.RESET} Escolha: ").strip()
+    print()
+
+    username = input(f"{Colors.PURPLE}>{Colors.RESET} Usuário: ").strip()
+    senha = getpass.getpass(f"{Colors.PURPLE}>{Colors.RESET} Senha: ").strip()
+
+    if escolha == "1":
+        mostrar_spinner("Autenticando")
+        if autenticar_usuario(username, senha):
+            limpar_tela()
+            mostrar_banner_principal()
+            print_box_message("Login Bem-sucedido", f"Bem-vindo(a) de volta, Senhor(a) {username}!", "success")
+            return username
+        else:
+            print_box_message("Erro de Autenticação", "Credenciais inválidas.", "error")
+            sys.exit(1)
+
+    elif escolha == "2":
+        confirm_senha = getpass.getpass(f"{Colors.PURPLE}>{Colors.RESET} Confirme a senha: ").strip()
+        if senha != confirm_senha:
+            print_box_message("Erro", "As senhas não coincidem.", "error")
+            sys.exit(1)
+        
+        mostrar_spinner("Criando conta")
+        resultado = criar_usuario(username, senha)
+        limpar_tela()
+        mostrar_banner_principal()
+        print_box_message("Conta Criada", resultado, "success")
+        return username
+    else:
+        print_box_message("Erro", "Opção inválida.", "error")
+        sys.exit(1)
 
 def alterar_senha(username_atual):
-    """
-    Permite ao usuário alterar sua senha atual
-    """
-    print("=== ALTERAÇÃO DE SENHA ===")
+    """Permite ao usuário alterar sua senha"""
+    print(f"\n{Colors.BOLD}{Colors.PURPLE}🔑 ALTERAÇÃO DE SENHA{Colors.RESET}\n")
     
-    # Solicitar nova senha
-    nova_senha = getpass.getpass("Digite a nova senha: ").strip()
+    nova_senha = getpass.getpass(f"{Colors.PURPLE}>{Colors.RESET} Nova senha: ").strip()
     if len(nova_senha) < 4:
-        print("A nova senha deve ter pelo menos 4 caracteres.")
+        print_box_message("Erro", "A senha deve ter pelo menos 4 caracteres.", "error")
         return False
     
-    confirmar_senha = getpass.getpass("Confirme a nova senha: ").strip()
+    confirmar_senha = getpass.getpass(f"{Colors.PURPLE}>{Colors.RESET} Confirme: ").strip()
     if nova_senha != confirmar_senha:
-        print("As senhas não coincidem.")
+        print_box_message("Erro", "As senhas não coincidem.", "error")
         return False
     
     try:
+        mostrar_spinner("Atualizando senha")
         atualizar_senha_usuario(username_atual, nova_senha)
-        print("Senha alterada com sucesso!")
+        print_box_message("Sucesso", "Senha alterada com sucesso!", "success")
         return True
     except Exception as e:
-        print(f"Erro ao alterar senha: {e}")
+        print_box_message("Erro", f"Falha ao alterar senha: {e}", "error")
         return False
 
 def alterar_username(username_atual):
-    """
-    Permite ao usuário alterar seu username atual
-    """
-    print("=== ALTERAÇÃO DE USERNAME ===")
+    """Permite ao usuário alterar seu username"""
+    print(f"\n{Colors.BOLD}{Colors.PURPLE}👤 ALTERAÇÃO DE USERNAME{Colors.RESET}\n")
     
-    # Verificar senha atual para segurança
-    senha_atual = getpass.getpass("Digite sua senha atual para confirmar: ").strip()
+    senha_atual = getpass.getpass(f"{Colors.PURPLE}>{Colors.RESET} Senha atual: ").strip()
     if not autenticar_usuario(username_atual, senha_atual):
-        print("Senha incorreta.")
+        print_box_message("Erro", "Senha incorreta.", "error")
         return None
     
-    # Solicitar novo username
-    novo_username = input("Digite o novo username: ").strip()
+    novo_username = input(f"{Colors.PURPLE}>{Colors.RESET} Novo username: ").strip()
     if len(novo_username) < 3:
-        print("O novo username deve ter pelo menos 3 caracteres.")
+        print_box_message("Erro", "O username deve ter pelo menos 3 caracteres.", "error")
         return None
     
-    # Verificar se o novo username já existe
     if verificar_usuario_existe(novo_username):
-        print("Este username já está em uso.")
+        print_box_message("Erro", "Este username já está em uso.", "error")
         return None
     
-    # Confirmar alteração
-    confirmacao = input(f"Tem certeza que deseja alterar de '{username_atual}' para '{novo_username}'? (s/n): ").strip().lower()
+    confirmacao = input(f"{Colors.YELLOW}⚠{Colors.RESET}  Confirmar alteração de '{username_atual}' → '{novo_username}'? (s/n): ").strip().lower()
     if confirmacao not in ['s', 'sim', 'y', 'yes']:
-        print("Alteração cancelada.")
+        print_box_message("Cancelado", "Alteração cancelada.", "info")
         return None
     
     try:
+        mostrar_spinner("Atualizando username")
         atualizar_username_usuario(username_atual, novo_username)
-        print(f"Username alterado com sucesso de '{username_atual}' para '{novo_username}'!")
+        print_box_message("Sucesso", f"Username alterado: {username_atual} → {novo_username}", "success")
         return novo_username
     except Exception as e:
-        print(f"Erro ao alterar username: {e}")
+        print_box_message("Erro", f"Falha ao alterar username: {e}", "error")
         return None
 
 def menu_configuracoes_usuario(username_atual):
-    """
-    Menu principal para configurações de usuário
-    """
+    """Menu de configurações de usuário"""
     while True:
         limpar_tela()
-        mostrar_banner()
-        print("\n=== CONFIGURAÇÕES DE USUÁRIO ===")
-        print(f"Usuário atual: {username_atual}")
-        print("1 - Alterar senha")
-        print("2 - Alterar username")
-        print("3 - Voltar ao menu principal")
+        mostrar_banner_principal()
         
-        escolha = input("Escolha uma opção: ").strip()
+        print(f"{Colors.BOLD}{Colors.PURPLE}⚙️  CONFIGURAÇÕES{Colors.RESET}")
+        print(f"{Colors.GRAY}Usuário atual: {Colors.CYAN}{username_atual}{Colors.RESET}\n")
+        print(f"  {Colors.CYAN}1{Colors.RESET} {Colors.GRAY}→{Colors.RESET} Alterar senha")
+        print(f"  {Colors.CYAN}2{Colors.RESET} {Colors.GRAY}→{Colors.RESET} Alterar username")
+        print(f"  {Colors.CYAN}3{Colors.RESET} {Colors.GRAY}→{Colors.RESET} Voltar ao menu principal\n")
+        
+        escolha = input(f"{Colors.PURPLE}>{Colors.RESET} ").strip()
         
         if escolha == "1":
             alterar_senha(username_atual)
-            input("\nPressione Enter para continuar...")
+            input(f"\n{Colors.GRAY}Pressione Enter para continuar...{Colors.RESET}")
         elif escolha == "2":
             novo_username = alterar_username(username_atual)
             if novo_username:
-                input("\nPressione Enter para continuar...")
+                input(f"\n{Colors.GRAY}Pressione Enter para continuar...{Colors.RESET}")
                 return novo_username
-            input("\nPressione Enter para continuar...")
+            input(f"\n{Colors.GRAY}Pressione Enter para continuar...{Colors.RESET}")
         elif escolha == "3":
             break
         else:
-            print("Opção inválida. Tente novamente.")
+            print_box_message("Erro", "Opção inválida.", "error")
             time.sleep(1)
     
     return username_atual
 
-def autenticar_usuario_interativo():
-    limpar_tela()
-    mostrar_banner()
-    print("=== AUTENTICAÇÃO ===")
-    print("1 - Login")
-    print("2 - Criar Conta")
-    escolha = input("Escolha: ").strip()
-
-    username = input("Usuário: ").strip()
-    senha = getpass.getpass("Senha: ").strip()
-
-    if escolha == "1":
-        if autenticar_usuario(username, senha):
-            limpar_tela()
-            mostrar_banner()
-            print(f"Bem-vindo(a) de volta, Senhor(a) {username}.")
-            return username
-        else:
-            print("Credenciais inválidas.")
-            sys.exit(1)
-
-    elif escolha == "2":
-        confirm_senha = getpass.getpass("Confirme a senha: ").strip()
-        if senha != confirm_senha:
-            print("As senhas digitadas devem ser iguais.")
-            sys.exit(1)
-        print(criar_usuario(username, senha))
-        limpar_tela()
-        mostrar_banner()
-        return username
-    else:
-        print("Opção inválida.")
-        sys.exit(1)
-
 def modo_texto(username):
+    """Modo de interação por texto com visual melhorado"""
     limpar_tela()
-    mostrar_banner_texto()
-    print("Modo texto ativado. Digite 'sair' para encerrar.")
+    mostrar_banner_principal()
+    mostrar_dicas()
+    
+    print(f"{Colors.DIM}~/{username}/jarvis{Colors.RESET}        {Colors.GRAY}modo texto{Colors.RESET}        {Colors.CYAN}JARVIS-CLI{Colors.RESET}\n")
+    
+    historico_comandos = []
+    
     while True:
         try:
-            comando = input(f"{username}@JARVIS> ").strip()
-            cmd_lower = comando.lower()
-            if cmd_lower == "sair":
-                print("Encerrando JARVIS.")
-                return "sair"
-            elif cmd_lower in ["cls", "limpar"]:
-                limpar_tela()
-                mostrar_banner_texto()
+            comando = input(f"{Colors.CYAN}>{Colors.RESET} ").strip()
+            
+            if not comando:
                 continue
-            else:
-                resposta = processar_comando(comando, username, modo='texto')
-                if resposta:
-                    print("JARVIS:", resposta)
+            
+            historico_comandos.append(comando)
+            cmd_lower = comando.lower()
+            
+            # Comandos especiais com /
+            if cmd_lower.startswith('/'):
+                if cmd_lower == "/sair":
+                    print_box_message("Encerrando", "JARVIS desativado.", "info")
+                    return "sair"
+                    
+                elif cmd_lower in ["/cls", "/clear", "/limpar"]:
+                    limpar_tela()
+                    mostrar_banner_principal()
+                    continue
+                    
+                elif cmd_lower == "/help":
+                    mostrar_comandos_slash()
+                    continue
+                    
+                elif cmd_lower == "/history":
+                    print(f"\n{Colors.BOLD}{Colors.PURPLE}📜 Histórico de Comandos{Colors.RESET}\n")
+                    if not historico_comandos:
+                        print(f"{Colors.GRAY}  Nenhum comando ainda.{Colors.RESET}\n")
+                    else:
+                        for i, cmd in enumerate(historico_comandos[-10:], 1):
+                            print(f"  {Colors.CYAN}{i}.{Colors.RESET} {cmd}")
+                    print()
+                    continue
+                    
+                elif cmd_lower == "/config":
+                    return "config"
+                    
+                elif cmd_lower == "/voz":
+                    return "voz"
+                    
                 else:
-                    resposta_gemini = responder_com_gemini(comando, username)
-                    print("JARVIS:", resposta_gemini)
+                    print_box_message("Erro", f"Comando '{comando}' não reconhecido. Use /help", "error")
+                    continue
+            
+            # Processar comando normal
+            mostrar_spinner("Processando", 0.8)
+            resposta = processar_comando(comando, username, modo='texto')
+            
+            if resposta:
+                print(f"\n{Colors.GREEN}●{Colors.RESET} {Colors.BOLD}JARVIS{Colors.RESET}\n")
+                print(f"{Colors.WHITE}{resposta}{Colors.RESET}\n")
+            else:
+                resposta_gemini = responder_com_gemini(comando, username)
+                print(f"\n{Colors.GREEN}●{Colors.RESET} {Colors.BOLD}JARVIS{Colors.RESET}\n")
+                print(f"{Colors.WHITE}{resposta_gemini}{Colors.RESET}\n")
+                
         except KeyboardInterrupt:
-            print("\nDigite 'sair' para encerrar ou continue comandando.")
+            print(f"\n\n{Colors.GRAY}(Use /sair para encerrar){Colors.RESET}\n")
         except Exception as e:
-            print(f"Erro: {e}")
+            print_box_message("Erro", str(e), "error")
 
 class VoiceCommandProcessor:
     def __init__(self, username):
@@ -196,12 +330,12 @@ class VoiceCommandProcessor:
             while self.running:
                 try:
                     with self.mic as source:
-                        print("Ouvindo...")
+                        print(f"{Colors.PURPLE}🎤{Colors.RESET} {Colors.GRAY}Ouvindo...{Colors.RESET}")
                         self.recognizer.adjust_for_ambient_noise(source)
                         audio = self.recognizer.listen(source, timeout=5)
 
                     comando = self.recognizer.recognize_google(audio, language="pt-BR")
-                    print(f"Você: {comando}")
+                    print(f"\n{Colors.CYAN}●{Colors.RESET} {Colors.BOLD}Você{Colors.RESET}\n{comando}\n")
 
                     if comando.lower() == "sair":
                         falar("Encerrando JARVIS.")
@@ -210,7 +344,7 @@ class VoiceCommandProcessor:
 
                     resposta = processar_comando(comando, self.username, modo='voz')
                     if resposta:
-                        print(f"JARVIS: {resposta}")
+                        print(f"{Colors.GREEN}●{Colors.RESET} {Colors.BOLD}JARVIS{Colors.RESET}\n{resposta}\n")
                         falar(resposta)
 
                 except sr.WaitTimeoutError:
@@ -218,9 +352,9 @@ class VoiceCommandProcessor:
                 except sr.UnknownValueError:
                     falar("Não entendi. Repita, por favor.")
                 except sr.RequestError:
-                    falar("Erro ao conectar ao serviço de voz.")
+                    print_box_message("Erro", "Falha ao conectar ao serviço de voz.", "error")
                 except Exception as e:
-                    print(f"Erro no processamento: {e}")
+                    print_box_message("Erro", str(e), "error")
 
         threading.Thread(target=processor, daemon=True).start()
 
@@ -228,9 +362,13 @@ class VoiceCommandProcessor:
         self.running = False
 
 def modo_voz(username):
+    """Modo de comando por voz"""
     limpar_tela()
-    mostrar_banner_voz()
-    print("Modo voz ativado. Diga 'sair' para encerrar.")
+    mostrar_banner_principal()
+    
+    print(f"{Colors.BOLD}{Colors.MAGENTA}🎤 MODO VOZ ATIVADO{Colors.RESET}")
+    print(f"{Colors.GRAY}Diga 'sair' para encerrar{Colors.RESET}\n")
+    print(f"{Colors.DIM}~/{username}/jarvis{Colors.RESET}        {Colors.GRAY}modo voz{Colors.RESET}        {Colors.CYAN}JARVIS-CLI{Colors.RESET}\n")
 
     processor = VoiceCommandProcessor(username)
 
@@ -239,20 +377,20 @@ def modo_voz(username):
             time.sleep(0.1)
     except KeyboardInterrupt:
         processor.stop()
-        falar("Modo voz interrompido.")
+        print_box_message("Interrompido", "Modo voz desativado.", "info")
     except Exception as e:
         processor.stop()
-        print(f"Erro: {e}")
+        print_box_message("Erro", str(e), "error")
 
     return "sair" if not processor.running else None
 
 def notificador_background(username, intervalo=10):
+    """Thread de verificação de tarefas em background"""
     while True:
         try:
             checar_tarefas_atrasadas(username)
             time.sleep(intervalo)
-        except Exception as e:
-            print(f"Erro no notificador: {e}")
+        except Exception:
             time.sleep(intervalo)
 
 def main():
@@ -262,51 +400,66 @@ def main():
 
     if args.user:
         username = args.user
-        print(f"[+] Usuário detectado via argumento: {username}")
+        print_box_message("Login Automático", f"Usuário: {username}", "info")
     else:
         username = autenticar_usuario_interativo()
 
+    # Thread de notificações em background
     notificador_thread = threading.Thread(target=notificador_background, args=(username,), daemon=True)
     notificador_thread.start()
 
     while True:
         limpar_tela()
-        mostrar_banner()
-        print(f"\n=== MENU PRINCIPAL - Usuário: {username} ===")
-        print("1 - Modo voz")
-        print("2 - Modo texto")
-        print("3 - Configurações de usuário")
-        print("sair - Encerrar JARVIS")
-        escolha = input("Escolha: ").strip().lower()
+        mostrar_banner_principal()
+        
+        print(f"{Colors.BOLD}{Colors.CYAN}📋 MENU PRINCIPAL{Colors.RESET}")
+        print(f"{Colors.GRAY}Usuário: {Colors.CYAN}{username}{Colors.RESET}\n")
+        print(f"  {Colors.CYAN}1{Colors.RESET} {Colors.GRAY}→{Colors.RESET} Modo voz")
+        print(f"  {Colors.CYAN}2{Colors.RESET} {Colors.GRAY}→{Colors.RESET} Modo texto")
+        print(f"  {Colors.CYAN}3{Colors.RESET} {Colors.GRAY}→{Colors.RESET} Configurações")
+        print(f"  {Colors.CYAN}sair{Colors.RESET} {Colors.GRAY}→{Colors.RESET} Encerrar JARVIS\n")
+        
+        escolha = input(f"{Colors.PURPLE}>{Colors.RESET} ").strip().lower()
 
         if escolha == "1":
             resultado = modo_voz(username)
             if resultado == "sair":
                 break
+                
         elif escolha == "2":
             resultado = modo_texto(username)
             if resultado == "sair":
                 break
+            elif resultado == "config":
+                novo_username = menu_configuracoes_usuario(username)
+                if novo_username != username:
+                    username = novo_username
+            elif resultado == "voz":
+                resultado = modo_voz(username)
+                if resultado == "sair":
+                    break
+                    
         elif escolha == "3":
             novo_username = menu_configuracoes_usuario(username)
             if novo_username != username:
                 username = novo_username
-                print(f"Sessão atualizada para o usuário: {username}")
+                
         elif escolha == "sair":
+            print_box_message("Encerrando", "JARVIS desativado. Até logo!", "info")
             falar("Encerrando JARVIS.")
             break
+            
         else:
-            print("Opção inválida.")
+            print_box_message("Erro", "Opção inválida.", "error")
             time.sleep(1)
 
 if __name__ == "__main__":
     limpar_tela()
-    mostrar_banner()
     try:
         main()
     except KeyboardInterrupt:
-        print("\nJARVIS encerrado pelo usuário.")
+        print(f"\n{Colors.YELLOW}⚠{Colors.RESET}  JARVIS encerrado pelo usuário.\n")
     except Exception as e:
-        print(f"Erro fatal: {e}")
+        print_box_message("Erro Fatal", str(e), "error")
     finally:
         sys.exit(0)
