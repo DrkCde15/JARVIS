@@ -1099,7 +1099,7 @@ def limpar_memoria_do_usuario_command(match, username):
 def responder_com_gemini_fallback(match, username):
     comando = match.group(0)
     return responder_com_gemini(comando, username)
-# ========== Lista de padrões e ações ==========
+# ========== Lista de comandos ==========
 padroes = [
     # Listar aplicativos
     (re.compile(r'\b(listar|mostrar|exibir)\s+(os\s+)?aplicativos\b', re.IGNORECASE), listar_aplicativos),
