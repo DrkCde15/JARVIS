@@ -43,7 +43,7 @@ def mostrar_banner_principal():
         "     ██║███████║██████╔╝██║   ██║██║███████╗",
         "██   ██║██╔══██║██╔══██╗╚██╗ ██╔╝██║╚════██║",
         "╚█████╔╝██║  ██║██║  ██║ ╚████╔╝ ██║███████║",
-        " ╚════╝ ╚═╝  ╚═╝╚═╝  ╚═╝  ╚═══╝  ╚═╝╚══════╝",
+        " ╚════╝ ╚═╝  ╚═╝╚═╝  ╚═╝  ╚═══╝ ╚═╝╚══════╝",
     ]
     
     colors = [Colors.CYAN, Colors.BLUE, Colors.PURPLE, Colors.MAGENTA, Colors.PINK, Colors.PINK]
@@ -51,7 +51,6 @@ def mostrar_banner_principal():
     print()
     for i, line in enumerate(banner):
         print(f"{colors[i]}{line}{Colors.RESET}")
-    print(f"\n{Colors.GRAY}Advanced Responsive General-purpose Engineering & Neural Tool{Colors.RESET}")
     print()
 
 def mostrar_spinner(mensagem: str, duracao: float = 1.5):
@@ -103,6 +102,7 @@ def mostrar_comandos_slash():
         '/config': 'Abre configurações do usuário',
         '/sair': 'Encerra o JARVIS',
         '/voz': 'Ativa o modo de comando por voz',
+        '/texto': 'Volta ao modo de texto',
     }
     
     print(f"\n{Colors.BOLD}{Colors.PURPLE}📋 Comandos Disponíveis{Colors.RESET}\n")
@@ -115,21 +115,32 @@ def mostrar_comandos_jarvis():
     print(f"\n{Colors.BOLD}{Colors.CYAN}🤖 COMANDOS DO JARVIS{Colors.RESET}\n")
     
     categorias = {
-        "📱 Aplicativos e Sites": [
-            ("listar aplicativos", "Lista todos os aplicativos disponíveis"),
-            ("listar sites", "Lista todos os sites cadastrados"),
-            ("abrir [aplicativo]", "Abre um aplicativo (notepad, google, brave, word, excel, etc)"),
-            ("iniciar [site]", "Abre um site (youtube, netflix, github, instagram, etc)"),
-            ("atualizar apps", "Atualiza a lista de aplicativos disponíveis"),
+        "📱 Gerenciamento de Aplicativos": [
+            ("listar aplicativos instalados", "Lista todos os aplicativos usando winapps"),
+            ("informações do aplicativo [nome]", "Mostra detalhes de um aplicativo"),
+            ("desinstalar aplicativo [nome]", "Remove um aplicativo do sistema"),
+            ("abrir [nome do app]", "Abre aplicativo usando winapps"),
         ],
-        "🔍 Análise e Pesquisa": [
-            ("analisar arquivo [caminho]", "Analisa o conteúdo de um arquivo"),
+        "💬 Mensagem(Whatsapp)": [
+            ("enviar whatsapp agendado", "Envia mensagem no WhatsApp (agendado)"),
+            ("enviar mensagem", "Envia mensagem instantânea"),
+            ("enviar whatsapp grupo", "Envia mensagem para grupo"),
+        ],
+        "🔍 Pesquisa": [
+            ("pesquisar no google [termo]", "Pesquisa no Google"),
+            ("google pesquisar [termo]", "Pesquisa no Google (alternativo)"),
+        ],
+        "🎵 YouTube": [
+            ("tocar música no youtube", "Abre música no YouTube"),
+            ("tocar vídeo no youtube", "Abre vídeo no YouTube"),
+        ],
+        "🌐 Análise": [
             ("analisar site [url]", "Analisa o conteúdo de um site"),
+            ("analisar arquivo [caminho]", "Analisa o conteúdo de um arquivo"),
             ("analisar imagem [caminho]", "Analisa uma imagem usando IA"),
-            ("pesquisar [termo]", "Pesquisa no Google"),
         ],
         "💾 Instalação e Downloads": [
-            ("instalar [programa]", "Instala um programa via linha de comando"),
+            ("instalar [programa]", "Instala um programa via Chocolatey"),
             ("desinstalar [programa]", "Remove um programa do sistema"),
             ("baixar vídeo [url]", "Baixa vídeo do YouTube"),
             ("baixar áudio [url]", "Baixa áudio/música do YouTube"),
@@ -142,10 +153,6 @@ def mostrar_comandos_jarvis():
             ("verificar atualizações", "Verifica atualizações do sistema"),
             ("atualizar sistema", "Atualiza o sistema operacional"),
             ("limpar temporários", "Remove arquivos temporários e lixo"),
-        ],
-        "🎵 Música": [
-            ("tocar música", "Reproduz música no YouTube"),
-            ("tocar spotify", "Abre e reproduz música no Spotify"),
         ],
         "📁 Arquivos": [
             ("criar arquivo", "Cria um novo arquivo"),
@@ -162,28 +169,37 @@ def mostrar_comandos_jarvis():
             ("limpar agenda", "Remove todas as tarefas"),
         ],
         "🕐 Data e Hora": [
-            ("falar hora", "Informa a hora atual"),
-            ("falar data", "Informa a data atual"),
+            ("que horas são", "Informa a hora atual"),
+            ("que dia é hoje", "Informa a data atual"),
         ],
         "🧠 Memória": [
             ("limpar memória", "Limpa o histórico de conversas"),
+        ],
+        "🌐 Sites": [
+            ("iniciar youtube", "Abre YouTube no navegador"),
+            ("abrir netflix", "Abre Netflix no navegador"),
+            ("iniciar github", "Abre GitHub no navegador"),
+            ("abrir instagram", "Abre Instagram no navegador"),
+            ("iniciar whatsapp", "Abre WhatsApp Web"),
+            ("abrir email", "Abre Gmail no navegador"),
         ],
     }
     
     for categoria, comandos_lista in categorias.items():
         print(f"{Colors.BOLD}{Colors.PURPLE}{categoria}{Colors.RESET}\n")
         for cmd, desc in comandos_lista:
-            print(f"  {Colors.CYAN}{cmd:<35}{Colors.RESET} {Colors.GRAY}→{Colors.RESET} {desc}")
+            print(f"  {Colors.CYAN}{cmd:<45}{Colors.RESET} {Colors.GRAY}→{Colors.RESET} {desc}")
         print()
     
     print(f"{Colors.GRAY}💡 Dica: Você também pode fazer perguntas naturais que o JARVIS entenderá!{Colors.RESET}\n")
 
+
 def mostrar_dicas():
     """Mostra dicas de uso"""
     print(f"{Colors.GRAY}╭─ Dicas para começar ───────────────────────────────────────╮{Colors.RESET}")
-    print(f"{Colors.GRAY}│{Colors.RESET} {Colors.WHITE}1.{Colors.RESET} Use {Colors.PURPLE}/comandos{Colors.RESET} para ver todos os comandos do JARVIS  {Colors.GRAY}│{Colors.RESET}")
-    print(f"{Colors.GRAY}│{Colors.RESET} {Colors.WHITE}2.{Colors.RESET} Pergunte qualquer coisa ou execute tarefas            {Colors.GRAY}│{Colors.RESET}")
-    print(f"{Colors.GRAY}│{Colors.RESET} {Colors.WHITE}3.{Colors.RESET} Digite {Colors.PURPLE}/help{Colors.RESET} para comandos especiais com /           {Colors.GRAY}│{Colors.RESET}")
+    print(f"{Colors.GRAY}│{Colors.RESET} {Colors.WHITE}1.{Colors.RESET} Pergunte qualquer coisa ou execute tarefas            {Colors.GRAY}│{Colors.RESET}")
+    print(f"{Colors.GRAY}│{Colors.RESET} {Colors.WHITE}2.{Colors.RESET} Digite {Colors.PURPLE}/help{Colors.RESET} para comandos especiais com /           {Colors.GRAY}│{Colors.RESET}")
+    print(f"{Colors.GRAY}│{Colors.RESET} {Colors.WHITE}3.{Colors.RESET} Digite {Colors.PURPLE}/comandos{Colors.RESET} para ver todos os comandos do JARVIS  {Colors.GRAY}│{Colors.RESET}")
     print(f"{Colors.GRAY}╰────────────────────────────────────────────────────────────╯{Colors.RESET}")
     print()
 
@@ -320,7 +336,7 @@ def modo_texto(username):
     mostrar_banner_principal()
     mostrar_dicas()
     
-    print(f"{Colors.DIM}~/{username}/jarvis{Colors.RESET}        {Colors.GRAY}modo texto{Colors.RESET}        {Colors.CYAN}A.R.G.E.N.T. v2.0{Colors.RESET}\n")
+    print(f"{Colors.DIM}~/{username}/jarvis{Colors.RESET}        {Colors.GRAY}modo texto{Colors.RESET}        {Colors.CYAN}JARVIS-CLI{Colors.RESET}\n")
     
     historico_comandos = []
     
@@ -343,6 +359,8 @@ def modo_texto(username):
                 elif cmd_lower in ["/cls", "/clear", "/limpar"]:
                     limpar_tela()
                     mostrar_banner_principal()
+                    mostrar_dicas()
+                    print(f"{Colors.DIM}~/{username}/jarvis{Colors.RESET}        {Colors.GRAY}modo texto{Colors.RESET}        {Colors.CYAN}JARVIS-CLI{Colors.RESET}\n")
                     continue
                     
                 elif cmd_lower == "/help":
@@ -369,6 +387,10 @@ def modo_texto(username):
                 elif cmd_lower == "/voz":
                     return "voz"
                     
+                elif cmd_lower == "/texto":
+                    print_box_message("Info", "Já está no modo texto.", "info")
+                    continue
+                    
                 else:
                     print_box_message("Erro", f"Comando '{comando}' não reconhecido. Use /help", "error")
                     continue
@@ -380,10 +402,6 @@ def modo_texto(username):
             if resposta:
                 print(f"\n{Colors.GREEN}●{Colors.RESET} {Colors.BOLD}JARVIS{Colors.RESET}\n")
                 print(f"{Colors.WHITE}{resposta}{Colors.RESET}\n")
-            else:
-                resposta_gemini = responder_com_gemini(comando, username)
-                print(f"\n{Colors.GREEN}●{Colors.RESET} {Colors.BOLD}JARVIS{Colors.RESET}\n")
-                print(f"{Colors.WHITE}{resposta_gemini}{Colors.RESET}\n")
                 
         except KeyboardInterrupt:
             print(f"\n\n{Colors.GRAY}(Use /sair para encerrar){Colors.RESET}\n")
@@ -405,30 +423,41 @@ class VoiceCommandProcessor:
                 try:
                     with self.mic as source:
                         print(f"{Colors.PURPLE}🎤{Colors.RESET} {Colors.GRAY}Ouvindo...{Colors.RESET}")
-                        self.recognizer.adjust_for_ambient_noise(source)
-                        audio = self.recognizer.listen(source, timeout=5)
+                        self.recognizer.adjust_for_ambient_noise(source, duration=0.5)
+                        audio = self.recognizer.listen(source, timeout=5, phrase_time_limit=10)
 
                     comando = self.recognizer.recognize_google(audio, language="pt-BR")
                     print(f"\n{Colors.CYAN}●{Colors.RESET} {Colors.BOLD}Você{Colors.RESET}\n{comando}\n")
 
-                    if comando.lower() == "sair":
+                    if comando.lower() in ["sair", "encerrar", "parar"]:
                         falar("Encerrando JARVIS.")
                         self.running = False
                         break
 
+                    # Processar comando
                     resposta = processar_comando(comando, self.username, modo='voz')
                     if resposta:
                         print(f"{Colors.GREEN}●{Colors.RESET} {Colors.BOLD}JARVIS{Colors.RESET}\n{resposta}\n")
-                        falar(resposta)
+                        
+                        # Se a resposta for muito longa, resumir para voz
+                        if len(resposta) > 200:
+                            resposta_voz = resposta[:197] + "..."
+                        else:
+                            resposta_voz = resposta
+                        falar(resposta_voz)
 
                 except sr.WaitTimeoutError:
                     continue
                 except sr.UnknownValueError:
                     falar("Não entendi. Repita, por favor.")
                 except sr.RequestError:
-                    print_box_message("Erro", "Falha ao conectar ao serviço de voz.", "error")
+                    falar("Erro de conexão com serviço de voz.")
+                except KeyboardInterrupt:
+                    self.running = False
+                    break
                 except Exception as e:
                     print_box_message("Erro", str(e), "error")
+                    falar("Ocorreu um erro. Tente novamente.")
 
         threading.Thread(target=processor, daemon=True).start()
 
@@ -441,8 +470,15 @@ def modo_voz(username):
     mostrar_banner_principal()
     
     print(f"{Colors.BOLD}{Colors.MAGENTA}🎤 MODO VOZ ATIVADO{Colors.RESET}")
-    print(f"{Colors.GRAY}Diga 'sair' para encerrar{Colors.RESET}\n")
-    print(f"{Colors.DIM}~/{username}/jarvis{Colors.RESET}        {Colors.GRAY}modo voz{Colors.RESET}        {Colors.CYAN}A.R.G.E.N.T. v2.0{Colors.RESET}\n")
+    print(f"{Colors.GRAY}Diga 'sair', 'encerrar' ou 'parar' para voltar ao menu{Colors.RESET}\n")
+    print(f"{Colors.DIM}~/{username}/jarvis{Colors.RESET}        {Colors.GRAY}modo voz{Colors.RESET}        {Colors.CYAN}JARVIS-CLI{Colors.RESET}\n")
+    
+    print(f"{Colors.GRAY}Comandos de exemplo:{Colors.RESET}")
+    print(f"  {Colors.CYAN}•{Colors.RESET} Abrir aplicativo [nome]")
+    print(f"  {Colors.CYAN}•{Colors.RESET} Listar aplicativos instalados")
+    print(f"  {Colors.CYAN}•{Colors.RESET} Pesquisar no Google [termo]")
+    print(f"  {Colors.CYAN}•{Colors.RESET} Tocar música no YouTube")
+    print(f"  {Colors.CYAN}•{Colors.RESET} Enviar WhatsApp\n")
 
     processor = VoiceCommandProcessor(username)
 
@@ -456,7 +492,7 @@ def modo_voz(username):
         processor.stop()
         print_box_message("Erro", str(e), "error")
 
-    return "sair" if not processor.running else None
+    return None  # Retorna ao menu principal
 
 def notificador_background(username, intervalo=10):
     """Thread de verificação de tarefas em background"""

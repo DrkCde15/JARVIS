@@ -211,12 +211,12 @@ def listar_aplicativos_winapps(match=None, username=None):
             return "Nenhum aplicativo encontrado, senhor."
         
         lista = ["Aplicativos instalados:"]
-        for app in apps[:50]:  # Limita a 50
+        for app in apps[:100]:  # Limita a 100
             versao = app.version if app.version else 'N/A'
             lista.append(f"- {app.name} (v{versao})")
-        
-        if len(apps) > 50:
-            lista.append(f"\n... e mais {len(apps) - 50} aplicativos.")
+
+        if len(apps) > 100:
+            lista.append(f"\n... e mais {len(apps) - 100} aplicativos.")
         
         return "\n".join(lista)
     except Exception as e:
@@ -304,32 +304,58 @@ def info_aplicativo_winapps(nome_app, username=None):
 
 # ========== PYWHATKIT - Automação de WhatsApp ==========
 
-def enviar_whatsapp(match, username=None, modo='texto'):
-    """Envia mensagem no WhatsApp com horário agendado"""
+def enviar_whatsapp_agendado(match, username=None, modo='texto'):
+    """Envia mensagem no WhatsApp com horário agendado - CORRIGIDO"""
     try:
         numero = input("Digite o número com DDI (ex: +5511999999999): ").strip()
         mensagem = input("Digite a mensagem: ").strip()
         
-        # Agenda para 2 minutos à frente
-        agora = datetime.now() + timedelta(minutes=2)
-        hora = agora.hour
-        minuto = agora.minute
+        # Agenda para pelo menos 2 minutos à frente
+        agora = datetime.now()
         
-        msg = f"Enviando mensagem para {numero} às {hora:02d}:{minuto:02d}..."
+        # Garantir que temos pelo menos 2 minutos no futuro
+        minuto_envio = agora.minute + 2
+        hora_envio = agora.hour
+        
+        # Ajustar se passar de 59 minutos
+        if minuto_envio >= 60:
+            minuto_envio = minuto_envio - 60
+            hora_envio = hora_envio + 1
+            if hora_envio >= 24:
+                hora_envio = 0
+        
+        msg = f"Enviando mensagem para {numero} às {hora_envio:02d}:{minuto_envio:02d}..."
         if modo == 'voz':
             falar(msg)
         print(msg)
         
-        kit.sendwhatmsg(numero, mensagem, hora, minuto, wait_time=15, tab_close=True)
+        # Usar wait_time mínimo de 15 segundos
+        kit.sendwhatmsg(numero, mensagem, hora_envio, minuto_envio, wait_time=15, tab_close=True)
         
-        return f"Mensagem agendada com sucesso para {numero}, senhor."
+        return f"Mensagem agendada com sucesso para {numero} às {hora_envio:02d}:{minuto_envio:02d}, senhor."
         
     except Exception as e:
-        return f"Erro ao enviar WhatsApp: {e}"
+        erro_msg = f"Erro ao enviar WhatsApp: {e}"
+        if "sleep length must be non-negative" in str(e):
+            # Tentar com mais tempo no futuro
+            try:
+                agora = datetime.now()
+                minuto_envio = agora.minute + 5  # 5 minutos no futuro
+                hora_envio = agora.hour
+                
+                if minuto_envio >= 60:
+                    minuto_envio = minuto_envio - 60
+                    hora_envio = hora_envio + 1
+                
+                kit.sendwhatmsg(numero, mensagem, hora_envio, minuto_envio, wait_time=15, tab_close=False)
+                return f"Mensagem reagendada para {hora_envio:02d}:{minuto_envio:02d}, senhor."
+            except:
+                return "Erro: Não foi possível agendar a mensagem. Tente novamente mais tarde."
+        return erro_msg
 
 
-def enviar_whatsapp_instantaneo(match, username=None, modo='texto'):
-    """Envia mensagem instantânea no WhatsApp"""
+def enviar_whatsapp(match, username=None, modo='texto'):
+    """Envia mensagem instantânea no WhatsApp - CORRIGIDO"""
     try:
         numero = input("Digite o número com DDI (ex: +5511999999999): ").strip()
         mensagem = input("Digite a mensagem: ").strip()
@@ -339,35 +365,79 @@ def enviar_whatsapp_instantaneo(match, username=None, modo='texto'):
             falar(msg)
         print(msg)
         
-        kit.sendwhatmsg_instantly(numero, mensagem, wait_time=15, tab_close=True)
-        
-        return f"Mensagem enviada instantaneamente para {numero}, senhor."
+        # Método 1: Tentar sendwhatmsg_instantly com wait_time adequado
+        try:
+            # wait_time mínimo de 10 segundos para evitar erro negativo
+            kit.sendwhatmsg_instantly(numero, mensagem, wait_time=10, tab_close=True)
+            return f"Mensagem enviada instantaneamente para {numero}, senhor."
+        except Exception as e1:
+            if "sleep length must be non-negative" in str(e1):
+                # Método 2: Usar sendwhatmsg com 1 minuto no futuro
+                agora = datetime.now()
+                minuto_envio = agora.minute + 1
+                hora_envio = agora.hour
+                
+                if minuto_envio >= 60:
+                    minuto_envio = 0
+                    hora_envio = hora_envio + 1
+                    if hora_envio >= 24:
+                        hora_envio = 0
+                
+                kit.sendwhatmsg(numero, mensagem, hora_envio, minuto_envio, wait_time=10, tab_close=False)
+                return f"Mensagem agendada para {hora_envio:02d}:{minuto_envio:02d} (quase instantâneo), senhor."
+            else:
+                raise e1
         
     except Exception as e:
-        return f"Erro ao enviar WhatsApp: {e}"
+        erro_msg = f"Erro ao enviar WhatsApp: {e}"
+        return erro_msg
 
 
 def enviar_whatsapp_grupo(match, username=None, modo='texto'):
-    """Envia mensagem para grupo do WhatsApp"""
+    """Envia mensagem para grupo do WhatsApp - CORRIGIDO"""
     try:
         grupo_id = input("Digite o ID do grupo: ").strip()
         mensagem = input("Digite a mensagem: ").strip()
         
-        agora = datetime.now() + timedelta(minutes=2)
-        hora = agora.hour
-        minuto = agora.minute
+        # Agendar para 2-3 minutos no futuro para evitar erro
+        agora = datetime.now()
+        minuto_envio = agora.minute + 2
+        hora_envio = agora.hour
         
-        msg = f"Enviando mensagem para o grupo às {hora:02d}:{minuto:02d}..."
+        # Ajustar se passar de 59 minutos
+        if minuto_envio >= 60:
+            minuto_envio = minuto_envio - 60
+            hora_envio = hora_envio + 1
+            if hora_envio >= 24:
+                hora_envio = 0
+        
+        msg = f"Enviando mensagem para o grupo às {hora_envio:02d}:{minuto_envio:02d}..."
         if modo == 'voz':
             falar(msg)
         print(msg)
         
-        kit.sendwhatmsg_to_group(grupo_id, mensagem, hora, minuto, wait_time=15, tab_close=True)
+        kit.sendwhatmsg_to_group(grupo_id, mensagem, hora_envio, minuto_envio, wait_time=15, tab_close=False)
         
-        return f"Mensagem agendada para o grupo com sucesso, senhor."
+        return f"Mensagem agendada para o grupo com sucesso às {hora_envio:02d}:{minuto_envio:02d}, senhor."
         
     except Exception as e:
-        return f"Erro ao enviar para grupo: {e}"
+        erro_msg = f"Erro ao enviar para grupo: {e}"
+        if "sleep length must be non-negative" in str(e):
+            # Tentar com mais tempo
+            try:
+                agora = datetime.now()
+                minuto_envio = agora.minute + 5
+                hora_envio = agora.hour
+                
+                if minuto_envio >= 60:
+                    minuto_envio = minuto_envio - 60
+                    hora_envio = hora_envio + 1
+                
+                kit.sendwhatmsg_to_group(grupo_id, mensagem, hora_envio, minuto_envio, wait_time=15, tab_close=True)
+                return f"Mensagem reagendada para {hora_envio:02d}:{minuto_envio:02d}, senhor."
+            except:
+                return "Erro: Não foi possível enviar para o grupo. Tente novamente."
+        return erro_msg
 
 
 # ========== PYWHATKIT - YouTube e Pesquisa ==========
@@ -394,9 +464,19 @@ def tocar_musica_pywhatkit(match, username=None, modo='texto'):
 
 
 def pesquisar_google_pywhatkit(match, username=None, modo='texto'):
-    """Pesquisa no Google usando pywhatkit"""
+    """Pesquisa no Google usando pywhatkit - versão corrigida"""
     try:
-        termo = match.group(2).strip()
+        # Tenta extrair o termo de pesquisa de diferentes grupos
+        termo = None
+        
+        # Verifica diferentes padrões de grupos
+        if match.lastindex >= 2:
+            termo = match.group(2).strip()
+        elif match.lastindex >= 1:
+            termo = match.group(1).strip()
+        else:
+            # Se não conseguir extrair do match, pergunta ao usuário
+            termo = input("O que deseja pesquisar no Google, senhor?\n>> ").strip()
         
         if not termo:
             return "Por favor especifique o que deseja pesquisar, senhor."
@@ -412,53 +492,6 @@ def pesquisar_google_pywhatkit(match, username=None, modo='texto'):
         
     except Exception as e:
         return f"Erro ao pesquisar: {e}"
-
-
-# ========== PYWHATKIT - Recursos Extras ==========
-
-def converter_texto_handwriting(match, username=None, modo='texto'):
-    """Converte texto para escrita à mão"""
-    try:
-        texto = input("Digite o texto para converter: ").strip()
-        
-        if not texto:
-            return "Nenhum texto informado, senhor."
-        
-        destino = Path.home() / "Documents" / "handwriting.png"
-        
-        msg = "Convertendo texto para escrita à mão..."
-        if modo == 'voz':
-            falar(msg)
-        print(msg)
-        
-        kit.text_to_handwriting(texto, save_to=str(destino), rgb=(0, 0, 0))
-        
-        return f"Texto convertido e salvo em {destino}, senhor."
-        
-    except Exception as e:
-        return f"Erro ao converter texto: {e}"
-
-
-def obter_info_programacao(match, username=None, modo='texto'):
-    """Obtém informações sobre linguagens/tópicos de programação"""
-    try:
-        # Tenta extrair do match, senão pergunta
-        topico = match.group(2).strip() if match.lastindex >= 2 and match.group(2) else input("Sobre qual tópico deseja informações? ").strip()
-        
-        if not topico:
-            return "Nenhum tópico informado, senhor."
-        
-        msg = f"Buscando informações sobre {topico}..."
-        if modo == 'voz':
-            falar(msg)
-        print(msg)
-        
-        kit.info(topico, lines=15)
-        
-        return f"Mostrando informações sobre {topico}, senhor."
-        
-    except Exception as e:
-        return f"Erro ao obter informações: {e}"
 
 
 # ========== Info Sites ==========
@@ -1213,30 +1246,24 @@ padroes = [
      lambda m, u: desinstalar_app_winapps(m.group(1).strip(), u)),
     
     # ===== PYWHATKIT - WhatsApp =====
-    (re.compile(r'\benviar\s+(?:mensagem\s+)?whatsapp\s+instant[âa]neo\b', re.IGNORECASE), 
-     enviar_whatsapp_instantaneo),
-    
-    (re.compile(r'\benviar\s+whatsapp\s+(?:para\s+)?grupo\b', re.IGNORECASE), 
-     enviar_whatsapp_grupo),
-    
-    (re.compile(r'\benviar\s+(?:mensagem\s+)?whatsapp\b', re.IGNORECASE), 
-     enviar_whatsapp),
+# Regex melhorados para comandos do WhatsApp
+    (re.compile(r'\benviar\s+(?:uma\s+)?(?:mensagem\s+)?whatsapp\s+(?:mensagem\s+)?(?:agendad[ao]|programad[ao])?\b', re.IGNORECASE), 
+    enviar_whatsapp_agendado),
+
+    (re.compile(r'\benviar\s+(?:uma\s+)?(?:mensagem\s+)?whatsapp\s+(?:para\s+)?(?:um\s+)?grupo\b', re.IGNORECASE), 
+    enviar_whatsapp_grupo),
+
+    (re.compile(r'\benviar\s+(?:uma\s+)?mensagem\b', re.IGNORECASE), 
+    enviar_whatsapp),
     
     # ===== PYWHATKIT - YouTube e Pesquisa =====
     (re.compile(r'\btocar\s+(?:m[úu]sica|v[íi]deo)\s+(?:no\s+)?youtube\b', re.IGNORECASE), 
      tocar_musica_pywhatkit),
     
-    (re.compile(r'\b(?:pesquisar|buscar|procurar)\s+(?:no\s+)?google\s+(.+)', re.IGNORECASE), 
+    (re.compile(r'\b(?:pesquisar|buscar|procurar|pesquise|busque|procure)\s+(?:por\s+)?(.+?)\s+(?:no\s+)?google$', re.IGNORECASE), 
      pesquisar_google_pywhatkit),
     
-    # ===== PYWHATKIT - Extras =====
-    (re.compile(r'\bconverter\s+texto\s+(?:para\s+)?(?:escrita\s+)?(?:[àa]\s+)?m[ãa]o\b', re.IGNORECASE), 
-     converter_texto_handwriting),
-    
-    (re.compile(r'\binforma[çc][õo]es?\s+(?:sobre\s+)?programa[çc][ãa]o\s+(.+)', re.IGNORECASE), 
-     obter_info_programacao),
-    
-    # ===== Comandos originais mantidos =====
+    # ===== Comandos originais =====
     (re.compile(r'\b(listar|mostrar|exibir)\s+(os\s+)?sites\b', re.IGNORECASE), listar_sites),
     
     (re.compile(r'\banalisar\s+arquivo\s+(.+)', re.IGNORECASE), lambda m, u: analisar_arquivos(m, u)),
