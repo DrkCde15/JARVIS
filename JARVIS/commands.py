@@ -14,7 +14,7 @@ import pyautogui # type: ignore
 from bs4 import BeautifulSoup
 import yt_dlp # type: ignore
 import time
-from datetime import datetime
+from datetime import datetime, timedelta
 import pandas as pd
 import google.generativeai as genai
 from PIL import Image
@@ -27,10 +27,13 @@ import threading
 from queue import Queue
 from typing import Callable
 import warnings
+import pywhatkit as kit
+import winapps
 
 warnings.filterwarnings('ignore')
 if "USER_AGENT" not in os.environ:
     os.environ["USER_AGENT"] = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/115.0.0.0 Safari/537.36"
+
 # ========== Configurações de voz ==========
 class VoiceCommandSystem:
     def __init__(self):
@@ -55,7 +58,7 @@ class VoiceCommandSystem:
             while True:
                 cmd_func, args, kwargs = self.command_queue.get()
                 try:
-                    time.sleep(0.3)  # Small delay to ensure voice starts first
+                    time.sleep(0.3)
                     cmd_func(*args, **kwargs)
                 except Exception as e:
                     print(f"Command execution error: {e}")
@@ -176,7 +179,7 @@ def instalar_programa_via_cmd_admin(programa=None, username=None):
         if not sucesso:
             return "Falha ao instalar Chocolatey, abortando."
 
-        time.sleep(5)  # Dá um tempo para o sistema registrar a instalação
+        time.sleep(5)
 
     sucesso = instalar_programa_choco(programa)
     if sucesso:
@@ -197,6 +200,266 @@ def desinstalar_programa(nome_programa, username, modo='texto'):
         return f"{nome_programa} desinstalado com sucesso (ou já não estava instalado)."
     except Exception as e:
         return f"Erro ao desinstalar {nome_programa}: {e}"
+
+# ========== WINAPPS - Gerenciamento de Aplicativos ==========
+
+def listar_aplicativos_winapps(match=None, username=None):
+    """Lista todos os aplicativos instalados usando winapps"""
+    try:
+        apps = list(winapps.list_installed())
+        if not apps:
+            return "Nenhum aplicativo encontrado, senhor."
+        
+        lista = ["Aplicativos instalados:"]
+        for app in apps[:50]:  # Limita a 50
+            versao = app.version if app.version else 'N/A'
+            lista.append(f"- {app.name} (v{versao})")
+        
+        if len(apps) > 50:
+            lista.append(f"\n... e mais {len(apps) - 50} aplicativos.")
+        
+        return "\n".join(lista)
+    except Exception as e:
+        return f"Erro ao listar aplicativos: {e}"
+
+
+def buscar_aplicativo_winapps(nome_app):
+    """Busca um aplicativo específico instalado"""
+    try:
+        for app in winapps.search_installed(nome_app):
+            return app
+        return None
+    except Exception as e:
+        print(f"Erro ao buscar aplicativo: {e}")
+        return None
+
+
+def abrir_aplicativo_winapps(match, username=None):
+    """Abre aplicativo usando winapps"""
+    nome = match.group(2).lower().strip()
+    
+    try:
+        app = buscar_aplicativo_winapps(nome)
+        
+        if app:
+            # Tentar abrir via local de instalação
+            if app.install_location and os.path.exists(app.install_location):
+                subprocess.Popen(f'start "" "{app.install_location}"', shell=True)
+            # Se não tiver local, tentar abrir pelo nome
+            else:
+                subprocess.Popen(f'start {app.name}', shell=True)
+            return f"Abrindo {app.name}, senhor."
+        else:
+            return f"Aplicativo '{nome}' não encontrado, senhor."
+            
+    except Exception as e:
+        return f"Erro ao abrir aplicativo: {e}"
+
+
+def desinstalar_app_winapps(nome_app, username=None, modo='texto'):
+    """Desinstala aplicativo usando winapps"""
+    try:
+        app = buscar_aplicativo_winapps(nome_app)
+        
+        if not app:
+            return f"Aplicativo '{nome_app}' não encontrado, senhor."
+        
+        resposta = f"Desinstalando {app.name}..."
+        if modo == 'voz':
+            falar(resposta)
+        print(resposta)
+        
+        # Usar chocolatey como fallback se winapps não conseguir desinstalar
+        try:
+            app.uninstall(wait=True)
+            return f"{app.name} desinstalado com sucesso, senhor."
+        except:
+            return desinstalar_programa(nome_app, username, modo)
+        
+    except Exception as e:
+        # Fallback para chocolatey
+        return desinstalar_programa(nome_app, username, modo)
+
+
+def info_aplicativo_winapps(nome_app, username=None):
+    """Obtém informações detalhadas de um aplicativo"""
+    try:
+        app = buscar_aplicativo_winapps(nome_app)
+        
+        if not app:
+            return f"Aplicativo '{nome_app}' não encontrado, senhor."
+        
+        info = f"""Informações do Aplicativo:
+- Nome: {app.name}
+- Versão: {app.version if app.version else 'N/A'}
+- Editor: {app.publisher if app.publisher else 'N/A'}
+- Data de Instalação: {app.install_date if app.install_date else 'N/A'}
+- Local: {app.install_location if app.install_location else 'N/A'}"""
+        
+        return info.strip()
+        
+    except Exception as e:
+        return f"Erro ao obter informações: {e}"
+
+
+# ========== PYWHATKIT - Automação de WhatsApp ==========
+
+def enviar_whatsapp(match, username=None, modo='texto'):
+    """Envia mensagem no WhatsApp com horário agendado"""
+    try:
+        numero = input("Digite o número com DDI (ex: +5511999999999): ").strip()
+        mensagem = input("Digite a mensagem: ").strip()
+        
+        # Agenda para 2 minutos à frente
+        agora = datetime.now() + timedelta(minutes=2)
+        hora = agora.hour
+        minuto = agora.minute
+        
+        msg = f"Enviando mensagem para {numero} às {hora:02d}:{minuto:02d}..."
+        if modo == 'voz':
+            falar(msg)
+        print(msg)
+        
+        kit.sendwhatmsg(numero, mensagem, hora, minuto, wait_time=15, tab_close=True)
+        
+        return f"Mensagem agendada com sucesso para {numero}, senhor."
+        
+    except Exception as e:
+        return f"Erro ao enviar WhatsApp: {e}"
+
+
+def enviar_whatsapp_instantaneo(match, username=None, modo='texto'):
+    """Envia mensagem instantânea no WhatsApp"""
+    try:
+        numero = input("Digite o número com DDI (ex: +5511999999999): ").strip()
+        mensagem = input("Digite a mensagem: ").strip()
+        
+        msg = f"Enviando mensagem instantânea para {numero}..."
+        if modo == 'voz':
+            falar(msg)
+        print(msg)
+        
+        kit.sendwhatmsg_instantly(numero, mensagem, wait_time=15, tab_close=True)
+        
+        return f"Mensagem enviada instantaneamente para {numero}, senhor."
+        
+    except Exception as e:
+        return f"Erro ao enviar WhatsApp: {e}"
+
+
+def enviar_whatsapp_grupo(match, username=None, modo='texto'):
+    """Envia mensagem para grupo do WhatsApp"""
+    try:
+        grupo_id = input("Digite o ID do grupo: ").strip()
+        mensagem = input("Digite a mensagem: ").strip()
+        
+        agora = datetime.now() + timedelta(minutes=2)
+        hora = agora.hour
+        minuto = agora.minute
+        
+        msg = f"Enviando mensagem para o grupo às {hora:02d}:{minuto:02d}..."
+        if modo == 'voz':
+            falar(msg)
+        print(msg)
+        
+        kit.sendwhatmsg_to_group(grupo_id, mensagem, hora, minuto, wait_time=15, tab_close=True)
+        
+        return f"Mensagem agendada para o grupo com sucesso, senhor."
+        
+    except Exception as e:
+        return f"Erro ao enviar para grupo: {e}"
+
+
+# ========== PYWHATKIT - YouTube e Pesquisa ==========
+
+def tocar_musica_pywhatkit(match, username=None, modo='texto'):
+    """Toca música no YouTube usando pywhatkit"""
+    try:
+        musica = input("Qual música deseja ouvir, senhor?\n>> ").strip()
+        
+        if not musica:
+            return "Nenhuma música informada, senhor."
+        
+        msg = f"Abrindo '{musica}' no YouTube..."
+        if modo == 'voz':
+            falar(msg)
+        print(msg)
+        
+        kit.playonyt(musica)
+        
+        return f"Reproduzindo '{musica}' no YouTube, senhor."
+        
+    except Exception as e:
+        return f"Erro ao abrir YouTube: {e}"
+
+
+def pesquisar_google_pywhatkit(match, username=None, modo='texto'):
+    """Pesquisa no Google usando pywhatkit"""
+    try:
+        termo = match.group(2).strip()
+        
+        if not termo:
+            return "Por favor especifique o que deseja pesquisar, senhor."
+        
+        msg = f"Pesquisando '{termo}' no Google..."
+        if modo == 'voz':
+            falar(msg)
+        print(msg)
+        
+        kit.search(termo)
+        
+        return f"Mostrando resultados para '{termo}', senhor."
+        
+    except Exception as e:
+        return f"Erro ao pesquisar: {e}"
+
+
+# ========== PYWHATKIT - Recursos Extras ==========
+
+def converter_texto_handwriting(match, username=None, modo='texto'):
+    """Converte texto para escrita à mão"""
+    try:
+        texto = input("Digite o texto para converter: ").strip()
+        
+        if not texto:
+            return "Nenhum texto informado, senhor."
+        
+        destino = Path.home() / "Documents" / "handwriting.png"
+        
+        msg = "Convertendo texto para escrita à mão..."
+        if modo == 'voz':
+            falar(msg)
+        print(msg)
+        
+        kit.text_to_handwriting(texto, save_to=str(destino), rgb=(0, 0, 0))
+        
+        return f"Texto convertido e salvo em {destino}, senhor."
+        
+    except Exception as e:
+        return f"Erro ao converter texto: {e}"
+
+
+def obter_info_programacao(match, username=None, modo='texto'):
+    """Obtém informações sobre linguagens/tópicos de programação"""
+    try:
+        # Tenta extrair do match, senão pergunta
+        topico = match.group(2).strip() if match.lastindex >= 2 and match.group(2) else input("Sobre qual tópico deseja informações? ").strip()
+        
+        if not topico:
+            return "Nenhum tópico informado, senhor."
+        
+        msg = f"Buscando informações sobre {topico}..."
+        if modo == 'voz':
+            falar(msg)
+        print(msg)
+        
+        kit.info(topico, lines=15)
+        
+        return f"Mostrando informações sobre {topico}, senhor."
+        
+    except Exception as e:
+        return f"Erro ao obter informações: {e}"
+
 
 # ========== Info Sites ==========
 def raspar_site(url):
@@ -231,7 +494,7 @@ def raspar_site(url):
         return f"Erro ao raspar site: {e}"
 
 def analisar_site(url, username=None):
-    texto_limpo = raspar_site(url)  # ou sua função que pega o texto do site
+    texto_limpo = raspar_site(url)
     if texto_limpo.startswith("Erro"):
         return texto_limpo
 
@@ -240,7 +503,6 @@ def analisar_site(url, username=None):
         "Forneça um resumo objetivo destacando pontos importantes."
     )
 
-    responder_com_gemini([prompt], username)
     resposta = responder_com_gemini([prompt], username)
     return resposta.content
 
@@ -252,13 +514,14 @@ def converter_audio_para_aac(caminho_video: Path):
         '-i', str(caminho_video),
         '-c:v', 'copy',
         '-c:a', 'aac',
-        '-y',  # sobrescreve se existir
+        '-y',
         str(caminho_saida)
     ]
     processo = subprocess.run(cmd, capture_output=True, text=True)
     if processo.returncode != 0:
         raise RuntimeError(f'Erro ffmpeg: {processo.stderr}')
     return caminho_saida
+
 def baixar_video_youtube(url, username, modo='texto'):
     try:
         destino = Path.home() / "Documents" / "Vídeos Download"
@@ -276,12 +539,10 @@ def baixar_video_youtube(url, username, modo='texto'):
 
         arquivo_baixado = destino / f"{titulo}.mp4"
 
-        # Converter o áudio para AAC para evitar problemas de compatibilidade
         arquivo_corrigido = converter_audio_para_aac(arquivo_baixado)
 
-        # Substitui o arquivo original pelo convertido
-        arquivo_baixado.unlink()  # apaga original
-        arquivo_corrigido.rename(arquivo_baixado)  # renomeia para original
+        arquivo_baixado.unlink()
+        arquivo_corrigido.rename(arquivo_baixado)
 
         msg = f"Vídeo '{titulo}' baixado e convertido com áudio AAC com sucesso em {destino}."
 
@@ -302,7 +563,6 @@ def limpar_nome_arquivo(nome):
     return nome
 
 def converter_para_mp3(caminho_arquivo: Path):
-    # Sanitize filename antes de converter
     pasta = caminho_arquivo.parent
     nome_limpo = limpar_nome_arquivo(caminho_arquivo.name)
     caminho_limpo = pasta / nome_limpo
@@ -326,6 +586,7 @@ def converter_para_mp3(caminho_arquivo: Path):
     if processo.returncode != 0:
         raise RuntimeError(f'Erro ao converter para MP3: {processo.stderr}')
     return caminho_saida
+
 def baixar_audio_youtube(url, username, modo='texto'):
     try:
         destino = Path.home() / "Documents" / "Áudios Download"
@@ -334,7 +595,6 @@ def baixar_audio_youtube(url, username, modo='texto'):
         opcoes = {
             'format': 'bestaudio/best',
             'outtmpl': str(destino / '%(title)s.%(ext)s'),
-            # removi o postprocessor do yt_dlp pra fazer a conversão na mão
             'postprocessors': []
         }
 
@@ -342,14 +602,11 @@ def baixar_audio_youtube(url, username, modo='texto'):
             info = ydl.extract_info(url, download=True)
             titulo = info.get('title', 'Áudio')
 
-        # O arquivo baixado pode ter extensão variável, pega a extensão original
         ext = info.get('ext', 'webm')  
         arquivo_baixado = destino / f"{titulo}.{ext}"
 
-        # Converte para mp3 com ffmpeg para garantir compatibilidade
         arquivo_convertido = converter_para_mp3(arquivo_baixado)
 
-        # Apaga o arquivo original e deixa só o mp3
         arquivo_baixado.unlink()
 
         msg = f"Áudio '{titulo}' baixado e convertido para MP3 com sucesso em {destino}."
@@ -367,14 +624,11 @@ def baixar_audio_youtube(url, username, modo='texto'):
 # ========== Gravação de Tela ==========
 def iniciar_gravacao_sistema(username=None):
     try:
-        # Inicia a gravação com atalho da Xbox Game Bar
         pyautogui.hotkey('winleft', 'shift', 'r')
         time.sleep(1)
 
-        # Pega o tamanho da tela
         largura, altura = pyautogui.size()
 
-        # Define o arraste da tela (simula área a ser gravada, opcionalmente)
         x_inicial, y_inicial = 10, 10
         x_final, y_final = largura - 10, altura - 10
 
@@ -384,7 +638,7 @@ def iniciar_gravacao_sistema(username=None):
         pyautogui.mouseUp()
         time.sleep(0.5)
         
-        time.sleep(1)  # Dá tempo da Game Bar carregar
+        time.sleep(1)
         pyautogui.moveTo(879, 44, duration=0.5)
         pyautogui.mouseDown()
         time.sleep(0.1)
@@ -396,8 +650,7 @@ def iniciar_gravacao_sistema(username=None):
 
 def parar_gravacao_sistema(username=None):
     try:
-        # Clica no botão de parar (posição aproximada para Full HD)
-        pyautogui.click(879,44, duration=0.5)  # Ajuste se necessário
+        pyautogui.click(879,44, duration=0.5)
         time.sleep(1)
 
         return "Gravação parada."
@@ -409,11 +662,10 @@ def parar_gravacao_sistema(username=None):
 class ImageAnalyser:
     """
     Use essa ferramenta para analisar qualquer tipo de imagem enviada pelo usuário.
-    Descreva o conteúdo visual da imagem, objetos, pessoas, textos (se houver), cenários e qualquer informação relevante.
+    Descreve o conteúdo visual da imagem, objetos, pessoas, textos (se houver), cenários e qualquer informação relevante.
     """
 
     def __init__(self):
-        # Configura o modelo Gemini
         self.model = genai.GenerativeModel("gemini-1.5-flash")
 
     def _run(self, image_path: str, username: str) -> str:
@@ -421,10 +673,8 @@ class ImageAnalyser:
             if not os.path.exists(image_path):
                 return f"Caminho inválido: {image_path}"
             
-            # Abre a imagem no formato correto
             image = Image.open(image_path).convert("RGB")
 
-            # Gera resposta com multimodal (texto + imagem)
             response = self.model.generate_content([
                 "Descreva com detalhes tudo o que está visível nesta imagem.",
                 image
@@ -432,7 +682,6 @@ class ImageAnalyser:
 
             resposta_texto = response.text.strip()
 
-            # Log e memória
             registrar_log(username, f"Análise de imagem: {image_path}")
             registrar_log(username, f"Resultado: {resposta_texto}")
 
@@ -441,7 +690,6 @@ class ImageAnalyser:
         except Exception as e:
             return f"Erro ao analisar imagem: {e}"
 
-# Função para processar comando de análise de imagem
 def analisar_imagem_comando(caminho, username, modo='texto'):
     if not os.path.exists(caminho):
         return f"Caminho inválido: {caminho}"
@@ -470,7 +718,6 @@ def get_agenda_path(username):
     safe_user = re.sub(r'[^a-zA-Z0-9_-]', '', username.lower())
     return os.path.join(AGENDA_DIR, f"agenda_{safe_user}.xlsx")
 
-# Inicializa agenda do usuário se não existir
 def inicializar_agenda(username):
     path = get_agenda_path(username)
     if not os.path.exists(path):
@@ -528,7 +775,7 @@ def adicionar_tarefa_completa(match, username):
         tarefa = match.group(2).strip()
         data = match.group(3) if match.group(3) else datetime.now().strftime("%d/%m/%Y")
         hora = match.group(4) if match.group(4) else ""
-        datetime.strptime(data, "%d/%m/%Y")  # valida data
+        datetime.strptime(data, "%d/%m/%Y")
         if hora and not re.match(r'^\d{2}:\d{2}$', hora):
             return "Formato de horário inválido. Use HH:MM."
         path = get_agenda_path(username)
@@ -576,7 +823,6 @@ def checar_tarefas_atrasadas(username):
         print(f"Erro ao abrir o arquivo de tarefas: {e}")
         return
 
-    # Remover caracteres problemáticos que possam causar erros de codificação
     df["Tarefa"] = df["Tarefa"].astype(str).apply(
         lambda x: x.encode('latin1', errors='ignore').decode('latin1'))
 
@@ -647,107 +893,6 @@ def processar_resposta_insercao(comando, username):
         del estado_insercao_agenda[username]
         return f"Tarefa '{tarefa}' adicionada para o dia {data} às {hora}, senhor."
 
-# ========== Abrir aplicativos ==========
-def abrir_aplicativo(match, username=None):
-    """Abre um aplicativo pelo nome. Adiciona automaticamente se não estiver no JSON"""
-    nome = match.group(2).lower()
-    apps = carregar_apps()
-
-    if nome in apps:
-        os.system(apps[nome])
-        return f"Abrindo {nome}, senhor."
-    else:
-        # procura no sistema
-        encontrados = escanear_programas()
-        for chave, caminho in encontrados.items():
-            if nome in chave.lower():
-                apps[chave] = f'start "" "{caminho}"'
-                salvar_json(apps)
-                os.system(apps[chave])
-                return f"Abrindo {chave}, senhor (adicionado ao JSON)."
-        return f"Aplicativo '{nome}' não encontrado, senhor."
-
-
-#========== Atualizar lista de aplicativos ==========
-JSON_FILE = './config/apps.json'
-PROGRAM_PATHS = [
-    os.environ.get("ProgramFiles", r"C:\Program Files"),
-    os.environ.get("ProgramFiles(x86)", r"C:\Program Files (x86)")
-]
-EXT_EXECUTAVEIS = [".exe"]
-
-APPS_INICIAIS = {
-    "notepad": "start notepad.exe",
-    "google": "start chrome.exe",
-    "brave": "start brave.exe",
-    "word": "start winword.exe",
-    "excel": "start excel.exe",
-    "powerpoint": "start powerpnt.exe",
-    "vscode": "start code.exe",
-    "explorador": "start explorer.exe",
-    "prompt": "start cmd.exe",
-    "powershell": "start powershell.exe"
-}
-
-# =================== FUNÇÕES ===================
-JSON_FILE = './config/apps.json'
-PROGRAM_PATHS = [
-    os.environ.get("ProgramFiles", r"C:\Program Files"),
-    os.environ.get("ProgramFiles(x86)", r"C:\Program Files (x86)")
-]
-EXT_EXECUTAVEIS = [".exe"]
-
-APPS_INICIAIS = {
-    "notepad": "start notepad.exe",
-    "google": "start chrome.exe",
-    "brave": "start brave.exe",
-    "word": "start winword.exe",
-    "excel": "start excel.exe",
-    "powerpoint": "start powerpnt.exe",
-    "vscode": "start code.exe",
-    "explorador": "start explorer.exe",
-    "prompt": "start cmd.exe",
-    "powershell": "start powershell.exe"
-}
-
-# =================== FUNÇÕES ===================
-def escanear_programas():
-    """Escaneia Program Files e retorna dict nome -> caminho"""
-    apps = {}
-    for base_path in PROGRAM_PATHS:
-        if not os.path.exists(base_path):
-            continue
-        for root, dirs, files in os.walk(base_path):
-            for file in files:
-                nome, ext = os.path.splitext(file)
-                if ext.lower() in EXT_EXECUTAVEIS:
-                    key = nome.lower()
-                    caminho_completo = os.path.join(root, file)
-                    if key not in apps:
-                        apps[key] = caminho_completo
-    return apps
-
-def salvar_json(apps):
-    """Salva apps no JSON"""
-    os.makedirs(os.path.dirname(JSON_FILE), exist_ok=True)
-    with open(JSON_FILE, 'w', encoding='utf-8') as f:
-        json.dump(apps, f, indent=4)
-
-def carregar_apps():
-    """Carrega apps do JSON ou cria padrão se não existir"""
-    if os.path.exists(JSON_FILE):
-        with open(JSON_FILE, 'r', encoding='utf-8') as f:
-            return json.load(f)
-    else:
-        salvar_json(APPS_INICIAIS)
-        return APPS_INICIAIS.copy()
-
-def atualizar_apps(match=None, username=None):
-    """Atualiza JSON com apps escaneados + apps iniciais"""
-    apps_scan = escanear_programas()
-    apps = {**apps_scan, **APPS_INICIAIS}
-    salvar_json(apps)
-    return f"Lista de aplicativos atualizada: {len(apps)} apps encontrados."
 # ========== Abrir sites ==========
 def abrir_site(match, username):
     comando = match.group(0).lower()
@@ -808,31 +953,6 @@ def limpar_lixo(match, username):
     except Exception as e:
         return f"Erro ao limpar arquivos: {e}"
 
-# ======= YouTube e Spotify =======
-
-def tocar_musica(match, username):
-    try:
-        musica = input("Qual música deseja ouvir, senhor?\n>> ").strip()
-        if not musica:
-            return "Nenhuma música informada, senhor."
-        query = musica.replace(" ", "+")
-        url = f"https://www.youtube.com/results?search_query={query}"
-        webbrowser.open(url)
-        return f"Buscando '{musica}' no YouTube agora, senhor."
-    except Exception as e:
-        return f"Erro ao abrir o YouTube: {e}"
-
-def tocar_musica_spotify(match, username):
-    try:
-        musica = input("Qual música deseja ouvir no Spotify, senhor?\n>> ").strip()
-        if not musica:
-            return "Nenhuma música informada, senhor."
-        query = musica.replace(" ", "%20")
-        url = f"https://open.spotify.com/search/{query}"
-        webbrowser.open(url)
-        return f"Buscando '{musica}' no Spotify agora, senhor. Faça login para ouvir."
-    except Exception as e:
-        return f"Erro ao abrir o Spotify: {e}"
 # ========== Funções de data e hora ==========
 def falar_hora(match, username):
     return f"Agora são {datetime.now().strftime('%H:%M')}"
@@ -874,39 +994,19 @@ def abrir_pasta(match, username):
             return f"Erro ao abrir a pasta: {e}"
     return f"Pasta '{nome_pasta_usuario}' não encontrada, senhor."
 
-# ========== Listagem ==========
-def listar_aplicativos(match, username):
-    try:
-        with open('./config/apps.json', 'r', encoding='utf-8') as f:
-            apps = json.load(f)
-    except Exception as e:
-        return f"Erro ao carregar lista de aplicativos: {e}"
-    return "Aplicativos disponíveis:\n" + "\n".join(f"- {k}" for k in apps.keys())
-
+# ========== Listagem de sites ==========
 def listar_sites(match, username):
-    try:
-        with open('./config/sites.json', 'r', encoding='utf-8') as f:
-            sites = json.load(f)
-    except Exception as e:
-        return f"Erro ao carregar lista de sites: {e}"
+    sites = {
+        "github": "https://github.com/",
+        "netflix": "https://www.netflix.com",
+        "youtube": "https://youtube.com",
+        "microsoft teams": "https://teams.microsoft.com",
+        "instagram": "https://www.instagram.com",
+        "whatsapp": "https://web.whatsapp.com",
+        "tik tok": "https://www.tiktok.com",
+        "e-mail": "https://mail.google.com"
+    }
     return "Sites disponíveis:\n" + "\n".join(f"- {k}" for k in sites.keys())
-
-# ========== Pesquisa Google ==========
-def pesquisar_google(match, username):
-    """Executa pesquisa no Google"""
-    try:
-        # Extrai o termo de pesquisa do grupo correto
-        termo = match.group(2).strip()  # Grupo 2 contém o termo de pesquisa
-        
-        if not termo:
-            return "Por favor especifique o que deseja pesquisar, Senhor."
-
-        url = f"https://www.google.com/search?q={termo.replace(' ', '+')}"
-        webbrowser.open_new(url)
-        return f"Mostrando resultados para '{termo}', Senhor."
-    
-    except Exception as e:
-        return f"Erro ao pesquisar: {str(e)}"
 
 # ========== Criação e manipulação de arquivos ==========
 def criar_arquivo(match, username):
@@ -1099,128 +1199,153 @@ def limpar_memoria_do_usuario_command(match, username):
 def responder_com_gemini_fallback(match, username):
     comando = match.group(0)
     return responder_com_gemini(comando, username)
-# ========== Lista de comandos ==========
+
+# ========== Lista de comandos ATUALIZADA ==========
 padroes = [
-    # Listar aplicativos
-    (re.compile(r'\b(listar|mostrar|exibir)\s+(os\s+)?aplicativos\b', re.IGNORECASE), listar_aplicativos),
+    # ===== WINAPPS - Gerenciamento de Aplicativos =====
+    (re.compile(r'\blistar\s+(?:os\s+)?aplicativos\s+instalados\b', re.IGNORECASE), 
+     listar_aplicativos_winapps),
     
-    # Listar sites
+    (re.compile(r'\binforma[çc][õo]es?\s+(?:do\s+)?(?:app|aplicativo)\s+(.+)', re.IGNORECASE), 
+     lambda m, u: info_aplicativo_winapps(m.group(1).strip(), u)),
+    
+    (re.compile(r'\bdesinstalar\s+(?:app|aplicativo)\s+(.+)', re.IGNORECASE), 
+     lambda m, u: desinstalar_app_winapps(m.group(1).strip(), u)),
+    
+    # ===== PYWHATKIT - WhatsApp =====
+    (re.compile(r'\benviar\s+(?:mensagem\s+)?whatsapp\s+instant[âa]neo\b', re.IGNORECASE), 
+     enviar_whatsapp_instantaneo),
+    
+    (re.compile(r'\benviar\s+whatsapp\s+(?:para\s+)?grupo\b', re.IGNORECASE), 
+     enviar_whatsapp_grupo),
+    
+    (re.compile(r'\benviar\s+(?:mensagem\s+)?whatsapp\b', re.IGNORECASE), 
+     enviar_whatsapp),
+    
+    # ===== PYWHATKIT - YouTube e Pesquisa =====
+    (re.compile(r'\btocar\s+(?:m[úu]sica|v[íi]deo)\s+(?:no\s+)?youtube\b', re.IGNORECASE), 
+     tocar_musica_pywhatkit),
+    
+    (re.compile(r'\b(?:pesquisar|buscar|procurar)\s+(?:no\s+)?google\s+(.+)', re.IGNORECASE), 
+     pesquisar_google_pywhatkit),
+    
+    # ===== PYWHATKIT - Extras =====
+    (re.compile(r'\bconverter\s+texto\s+(?:para\s+)?(?:escrita\s+)?(?:[àa]\s+)?m[ãa]o\b', re.IGNORECASE), 
+     converter_texto_handwriting),
+    
+    (re.compile(r'\binforma[çc][õo]es?\s+(?:sobre\s+)?programa[çc][ãa]o\s+(.+)', re.IGNORECASE), 
+     obter_info_programacao),
+    
+    # ===== Comandos originais mantidos =====
     (re.compile(r'\b(listar|mostrar|exibir)\s+(os\s+)?sites\b', re.IGNORECASE), listar_sites),
     
-    # Analisar arquivos
     (re.compile(r'\banalisar\s+arquivo\s+(.+)', re.IGNORECASE), lambda m, u: analisar_arquivos(m, u)),
     
-    # Analisar site
     (re.compile(r'\banalisar\s+site\s+(.+)', re.IGNORECASE), lambda m, u: analisar_site(m.group(1).strip(), u)),
     
-    #Instalar e Desinstalar programas
     (re.compile(r"\b(?:instalar|instale|quero instalar)\s+([a-zA-Z0-9\-\.]+)", re.IGNORECASE), 
      lambda m, u: instalar_programa_via_cmd_admin(m.group(1), u)),
     (re.compile(r"\b(?:desinstalar|remover|apagar)\s+([a-zA-Z0-9\-\.]+)", re.IGNORECASE), 
      lambda m, u: desinstalar_programa(m.group(1), u, 'texto')),
     
-    # Baixar videos e musicas
     (re.compile(r"\b(baixar|fazer download de|salvar)\b.*?\b(vídeo|video)\b.*?(https?://[^\s]+)", re.IGNORECASE), 
      lambda m, u: baixar_video_youtube(m.group(3), u)),
     (re.compile(r"\b(baixar|fazer download de|salvar)\b.*?\b(áudio|audio|som|mp3|musica|música)\b.*?(https?://[^\s]+)", re.IGNORECASE), 
      lambda m, u: baixar_audio_youtube(m.group(3), u)),
     
-    # Gravação de Tela
     (re.compile(r'\b(gravar|iniciar)\s+(?:vídeo|video|gravação|gravacao|tela)\b', re.IGNORECASE), 
      lambda m, u: iniciar_gravacao_sistema()),
     (re.compile(r'\b(parar|finalizar)\s+(?:vídeo|video|gravação|gravacao|tela)\b', re.IGNORECASE), 
      lambda m, u: parar_gravacao_sistema()),
     
-    # Abrir sites e aplicativos
     (re.compile(r'\b(iniciar|abrir|executar)\s+(youtube|netflix|microsoft teams|github|instagram|tik\s*tok|tiktok|e-?mail|email|whatsapp)\b', re.IGNORECASE), 
      abrir_site),
     
-    (re.compile(r'\b(executar|abrir|iniciar)\s+(notepad|google|brave|word|excel|powerpoint|vscode|explorador|prompt|powershell)\b', re.IGNORECASE), 
-     abrir_aplicativo),
+    (re.compile(r'\b(executar|abrir|iniciar)\s+(.+)', re.IGNORECASE), 
+     abrir_aplicativo_winapps),
     
-    # Atualizar a lista de aplicativos
-    (re.compile(r'\b(atualizar|atualizar\s+apps|atualizar\s+aplicativos)\b', re.IGNORECASE), atualizar_apps),
-    
-    # Analisar imagens
     (re.compile(r'\banalisar\s+imagem\s+(.+)', re.IGNORECASE), 
      lambda m, u: analisar_imagem_comando(m.group(1).strip(), u)),
     
-    # Comandos de sistema
-    (re.compile(r'\bverificar\s+atualiza[cç][aã]o(es)?\b', re.IGNORECASE), 
-     verificar_atualizacoes),
-    (re.compile(r'\batualizar\s+(o\s+)?sistema\b', re.IGNORECASE), 
-     atualizar_sistema),
-    (re.compile(r'\blimpar\s+(arquivos\s+)?tempor[aá]rios|limpar\s+lixo\b', re.IGNORECASE), 
-     limpar_lixo),
-    
-    # Tocar música YouTube/Spotify
-    (re.compile(r'\btocar\s+(m[uú]sica|youtube)\b', re.IGNORECASE), 
-     tocar_musica),
-    (re.compile(r'\btocar\s+spotify\b', re.IGNORECASE), 
-     tocar_musica_spotify),
-    
-    # Comandos de arquivos
-    (re.compile(r'\b(criar|gerar)\s+(arquivo|documento)\b', re.IGNORECASE), 
-     criar_arquivo),
-    (re.compile(r'\b(criar|fazer|gerar)\s+(código|codigo)\b', re.IGNORECASE), 
-     criar_codigo),
-    (re.compile(r'\blistar\s+arquivos\s+(?:com\s+(?:a\s+)?extens[aã]o\s+)?(\.?\w+)?(?:\s+na\s+pasta\s+(\w+))?', re.IGNORECASE), 
-     listar_arquivos),
-    (re.compile(r'\babrir\s+pasta\s+(.+)', re.IGNORECASE), 
-     abrir_pasta),
-    (re.compile(r'\b(ler|analisar)\s+arquivo\s+(.+)', re.IGNORECASE), 
-     analisar_arquivos),
-    
-    # Comandos de agenda
-    (re.compile(r'\bler\s+agenda\b', re.IGNORECASE), 
-     ler_agenda),
-    (re.compile(r'\babrir\s+agenda\b', re.IGNORECASE), 
-     abrir_agenda),
-    (re.compile(r'\blimpar\s+agenda\b', re.IGNORECASE), 
-     limpar_agenda),
-    (re.compile(r'\bmarcar\s+como\s+feita\s+(?:tarefa\s+)?(.+)', re.IGNORECASE), 
-     marcar_como_feita),
-    (re.compile(r'\b(adicionar|inserir|criar)\s+(.+?)\s+na\s+agenda(?:\s+no\s+dia\s+(\d{2}/\d{2}/\d{4}))?(?:\s+no\s+hor[áa]rio\s+(\d{2}:\d{2}))?', re.IGNORECASE), 
+    # Agenda
+    (re.compile(r'\babrir\s+agenda\b', re.IGNORECASE), abrir_agenda),
+    (re.compile(r'\b(?:ler|ver|mostrar)\s+agenda\b', re.IGNORECASE), ler_agenda),
+    (re.compile(r'\blimpar\s+agenda\b', re.IGNORECASE), limpar_agenda),
+    (re.compile(r'\badicionar\s+tarefa\s+"([^"]+)"\s+(?:para\s+)?(\d{2}/\d{2}/\d{4})(?:\s+às\s+(\d{2}:\d{2}))?', re.IGNORECASE), 
      adicionar_tarefa_completa),
+    (re.compile(r'\badicionar\s+tarefa\b', re.IGNORECASE), iniciar_insercao_agenda),
+    (re.compile(r'\bmarcar\s+(?:como\s+)?feita\s+(.+)', re.IGNORECASE), marcar_como_feita),
     
-    # Comandos data e hora
-    (re.compile(r'\bfalar\s+hora\b', re.IGNORECASE),
-     falar_hora),
-    (re.compile(r'\bfalar\s+data\b', re.IGNORECASE), 
-     falar_data),
+    # Sistema
+    (re.compile(r'\bverificar\s+atualiza[çc][õo]es\b', re.IGNORECASE), verificar_atualizacoes),
+    (re.compile(r'\batualizar\s+sistema\b', re.IGNORECASE), atualizar_sistema),
+    (re.compile(r'\blimpar\s+lixo\b', re.IGNORECASE), limpar_lixo),
     
-    # Comandos de memória
-    (re.compile(r'\blimpar\s+(?:a\s+)?mem[oó]ria\b', re.IGNORECASE), 
-     limpar_memoria_do_usuario_command),
+    # Data e hora
+    (re.compile(r'\bque\s+horas?\s+s[ãa]o\b', re.IGNORECASE), falar_hora),
+    (re.compile(r'\bque\s+dia\s+[ée]\s+hoje\b', re.IGNORECASE), falar_data),
     
-    # Comandos de pesquisa
-    ((re.compile(r'\b(pesquisar|buscar|procurar)\s+(?:por\s+)?(.+)', re.IGNORECASE), pesquisar_google)),
+    # Pastas
+    (re.compile(r'\babrir\s+(?:pasta\s+)?(.+)', re.IGNORECASE), abrir_pasta),
     
-    # Comandos de gemini
-    (re.compile(r'.+'), 
-     responder_com_gemini_fallback)
-]
-
+    # Arquivos
+    (re.compile(r'\blistar\s+arquivos(?:\s+\.(\w+))?(?:\s+em\s+(.+))?', re.IGNORECASE), listar_arquivos),
+    (re.compile(r'\bcriar\s+(?:arquivo\s+)?de\s+texto\b', re.IGNORECASE), criar_arquivo),
+    (re.compile(r'\bcriar\s+(?:c[óo]digo|programa)\b', re.IGNORECASE), criar_codigo),
+    
+    # Limpar memória
+    (re.compile(r'\blimpar\s+mem[óo]ria\b', re.IGNORECASE), limpar_memoria_do_usuario_command),
+    ]
 # ========== Enhanced Command Processor ==========
-def processar_comando(comando, username, modo='texto'):
-    """Processa comandos"""
+def processar_comando(comando: str, username: str, modo: str = 'texto'):
+    """
+    Processa um comando do usuário comparando com os padrões registrados.
+    Retorna a resposta da ação correspondente ou usa fallback com Gemini.
+    """
+    comando = comando.strip()
+
+    if not comando:
+        return "Nenhum comando recebido, senhor."
+
+    # 1️⃣ Inserção de tarefa em andamento (estado conversacional)
+    if username in estado_insercao_agenda:
+        resposta = processar_resposta_insercao(comando, username)
+        if modo == 'voz':
+            falar(resposta)
+        return resposta
+
+    # 2️⃣ Match contra padrões registrados
     for padrao, acao in padroes:
         match = padrao.search(comando)
         if match:
             try:
                 resultado = acao(match, username)
-                
-                if modo == 'voz':
+
+                # Algumas funções retornam objeto Gemini
+                if hasattr(resultado, "content"):
+                    resultado = resultado.content
+
+                if resultado and modo == 'voz':
                     falar(resultado)
-                return resultado
-                    
+
+                registrar_log(username, f"Comando: {comando}")
+                registrar_log(username, f"Resposta: {resultado}")
+
+                return resultado or "Comando executado, senhor."
+
             except Exception as e:
-                erro = f"Erro ao processar comando: {e}"
-                if modo == 'voz':
-                    falar(erro)
+                erro = f"Erro ao executar comando: {e}"
+                registrar_log(username, erro)
                 return erro
-                
-    msg = "Comando não reconhecido, Senhor."
-    if modo == 'voz':
-        falar(msg)
-    return msg
+
+    # 3️⃣ Nenhum padrão reconhecido → fallback IA
+    try:
+        resposta = responder_com_gemini(comando, username)
+        if hasattr(resposta, "content"):
+            resposta = resposta.content
+        if modo == 'voz':
+            falar(resposta)
+        registrar_log(username, f"Fallback Gemini: {comando}")
+        return resposta
+    except Exception as e:
+        return f"Não consegui processar o comando, senhor. Erro: {e}"

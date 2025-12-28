@@ -21,3 +21,5 @@ pillow
 pymupdf
 python-dotenv
 pyfiglet
+winapps
+pywhatkit
