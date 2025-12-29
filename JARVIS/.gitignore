@@ -1,4 +1,4 @@
 .env
 jenv
 data/
-.txt
+*.txt

@@ -14,7 +14,7 @@ import pyautogui # type: ignore
 from bs4 import BeautifulSoup
 import yt_dlp # type: ignore
 import time
-from datetime import datetime, timedelta
+from datetime import datetime
 import pandas as pd
 import google.generativeai as genai
 from PIL import Image
@@ -34,6 +34,25 @@ warnings.filterwarnings('ignore')
 if "USER_AGENT" not in os.environ:
     os.environ["USER_AGENT"] = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/115.0.0.0 Safari/537.36"
 
+
+# ========== Cores ==========
+class Colors:
+    """Códigos ANSI para cores e estilos"""
+    BLUE = '\033[38;5;39m'
+    CYAN = '\033[38;5;51m'
+    PURPLE = '\033[38;5;141m'
+    MAGENTA = '\033[38;5;199m'
+    PINK = '\033[38;5;213m'
+    GRAY = '\033[38;5;240m'
+    WHITE = '\033[97m'
+    GREEN = '\033[92m'
+    YELLOW = '\033[93m'
+    RED = '\033[91m'
+    ORANGE = '\033[38;5;208m'
+    BOLD = '\033[1m'
+    DIM = '\033[2m'
+    RESET = '\033[0m'
+    CLEAR_LINE = '\033[2K'
 # ========== Configurações de voz ==========
 class VoiceCommandSystem:
     def __init__(self):
@@ -394,51 +413,104 @@ def enviar_whatsapp(match, username=None, modo='texto'):
 
 
 def enviar_whatsapp_grupo(match, username=None, modo='texto'):
-    """Envia mensagem para grupo do WhatsApp - CORRIGIDO"""
+    """Envia mensagem para grupo usando ID obtido via Inspecionar Elemento"""
     try:
-        grupo_id = input("Digite o ID do grupo: ").strip()
-        mensagem = input("Digite a mensagem: ").strip()
+        print(f"\n{Colors.YELLOW}🔍 {Colors.BOLD}Como obter o ID do grupo:{Colors.RESET}")
+        print(f"{Colors.GRAY}1.{Colors.RESET} Abra o grupo no WhatsApp Web")
+        print(f"{Colors.GRAY}2.{Colors.RESET} Clique com o botão direito no nome do grupo")
+        print(f"{Colors.GRAY}3.{Colors.RESET} Selecione 'Inspecionar' ou 'Inspect'")
+        print(f"{Colors.GRAY}4.{Colors.RESET} Procure no código HTML por:")
+        print(f"   {Colors.CYAN}data-id{Colors.RESET} ou {Colors.CYAN}data-group-id{Colors.RESET}")
+        print(f"{Colors.GRAY}5.{Colors.RESET} Copie o valor, exemplo:")
+        print(f"   {Colors.GREEN}120363012345678901@g.us{Colors.RESET}")
+        print(f"\n{Colors.YELLOW}📝 {Colors.BOLD}Formato do ID:{Colors.RESET}")
+        print(f"• {Colors.CYAN}120363012345678901@g.us{Colors.RESET}")
+        print(f"• {Colors.CYAN}5511999999999-1623456789@g.us{Colors.RESET}")
+        print(f"• Sempre termina com {Colors.YELLOW}@g.us{Colors.RESET}")
         
-        # Agendar para 2-3 minutos no futuro para evitar erro
+        print(f"\n{Colors.GRAY}{'='*60}{Colors.RESET}")
+        
+        # Pedir o ID do grupo
+        grupo_id = input(f"\n{Colors.PURPLE}>{Colors.RESET} Cole o ID do grupo (@g.us): ").strip()
+        mensagem = input(f"{Colors.PURPLE}>{Colors.RESET} Digite a mensagem: ").strip()
+        
+        if not grupo_id:
+            return "ID do grupo é obrigatório, senhor."
+        
+        if not mensagem:
+            return "Mensagem é obrigatória, senhor."
+        
+        # Verificar formato do ID
+        if not grupo_id.endswith('@g.us'):
+            print(f"{Colors.YELLOW}⚠{Colors.RESET}  O ID deve terminar com '@g.us'")
+            confirmar = input(f"{Colors.YELLOW}❓{Colors.RESET}  Continuar mesmo assim? (s/n): ").strip().lower()
+            if confirmar not in ['s', 'sim', 'y', 'yes']:
+                return "Operação cancelada."
+        
+        msg = f"Preparando para enviar para o grupo..."
+        if modo == 'voz':
+            falar("Preparando mensagem para o grupo")
+        print(f"\n{Colors.GREEN}✓{Colors.RESET} {msg}")
+        print(f"{Colors.GRAY}ID: {grupo_id}{Colors.RESET}")
+        
+        # Agenda para 1 minuto no futuro
         agora = datetime.now()
-        minuto_envio = agora.minute + 2
-        hora_envio = agora.hour
+        hora = agora.hour
+        minuto = agora.minute + 1
         
         # Ajustar se passar de 59 minutos
-        if minuto_envio >= 60:
-            minuto_envio = minuto_envio - 60
-            hora_envio = hora_envio + 1
-            if hora_envio >= 24:
-                hora_envio = 0
+        if minuto >= 60:
+            minuto -= 60
+            hora = (hora + 1) % 24
         
-        msg = f"Enviando mensagem para o grupo às {hora_envio:02d}:{minuto_envio:02d}..."
-        if modo == 'voz':
-            falar(msg)
-        print(msg)
+        print(f"{Colors.GRAY}⏰{Colors.RESET} Agendando para {hora:02d}:{minuto:02d}...")
         
-        kit.sendwhatmsg_to_group(grupo_id, mensagem, hora_envio, minuto_envio, wait_time=15, tab_close=False)
-        
-        return f"Mensagem agendada para o grupo com sucesso às {hora_envio:02d}:{minuto_envio:02d}, senhor."
+        try:
+            # Testar se o pywhatkit aceita o ID de grupo
+            kit.sendwhatmsg_to_group(
+                group_id=grupo_id,
+                message=mensagem,
+                time_hour=hora,
+                time_min=minuto,
+                wait_time=20,
+                tab_close=False
+            )
+            
+            return f"Mensagem agendada para o grupo às {hora:02d}:{minuto:02d}, senhor."
+            
+        except Exception as e:
+            erro_msg = str(e)
+            
+            # Se for erro de grupo, tentar método alternativo
+            if "group" in erro_msg.lower() or "inválido" in erro_msg.lower():
+                print(f"{Colors.YELLOW}⚠{Colors.RESET}  Método de grupo falhou. Tentando método alternativo...")
+                
+                # Método alternativo: usar o ID como número de telefone (removendo @g.us)
+                if '@g.us' in grupo_id:
+                    numero_alternativo = grupo_id.replace('@g.us', '').replace('-', '')
+                    
+                    # Se o ID começar com 1203630 (comum para grupos), não funciona como número
+                    if numero_alternativo.startswith('1203630'):
+                        return f"ID de grupo não compatível. Formato detectado: {grupo_id}"
+                    
+                    print(f"{Colors.GRAY}Tentando com número: {numero_alternativo}{Colors.RESET}")
+                    
+                    # Tentar enviar como se fosse um número normal
+                    kit.sendwhatmsg(
+                        phone_no=numero_alternativo,
+                        message=f"[PARA O GRUPO] {mensagem}",
+                        time_hour=hora,
+                        time_min=minuto,
+                        wait_time=20,
+                        tab_close=False
+                    )
+                    
+                    return f"Mensagem enviada via método alternativo às {hora:02d}:{minuto:02d}"
+            
+            return f"Erro ao enviar: {erro_msg}"
         
     except Exception as e:
-        erro_msg = f"Erro ao enviar para grupo: {e}"
-        if "sleep length must be non-negative" in str(e):
-            # Tentar com mais tempo
-            try:
-                agora = datetime.now()
-                minuto_envio = agora.minute + 5
-                hora_envio = agora.hour
-                
-                if minuto_envio >= 60:
-                    minuto_envio = minuto_envio - 60
-                    hora_envio = hora_envio + 1
-                
-                kit.sendwhatmsg_to_group(grupo_id, mensagem, hora_envio, minuto_envio, wait_time=15, tab_close=True)
-                return f"Mensagem reagendada para {hora_envio:02d}:{minuto_envio:02d}, senhor."
-            except:
-                return "Erro: Não foi possível enviar para o grupo. Tente novamente."
-        return erro_msg
-
+        return f"Erro geral: {e}"
 
 # ========== PYWHATKIT - YouTube e Pesquisa ==========
 
@@ -939,7 +1011,12 @@ def abrir_site(match, username):
         "tik tok": "https://www.tiktok.com",
         "tiktok": "https://www.tiktok.com",
         "e-mail": "https://mail.google.com",
-        "email": "https://mail.google.com"
+        "email": "https://mail.google.com",
+        "calendario": "https://calendar.google.com/calendar/u/0/r",
+        "meet": "https://meet.google.com/landing?hs=197&authuser=0",
+        "google meet": "https://meet.google.com/landing?hs=197&authuser=0",
+        "drive": "https://drive.google.com/drive/u/0/home",
+        "google drive": "https://drive.google.com/drive/u/0/home"
     }
     for nome, url in sites.items():
         if nome in comando:
@@ -1037,7 +1114,12 @@ def listar_sites(match, username):
         "instagram": "https://www.instagram.com",
         "whatsapp": "https://web.whatsapp.com",
         "tik tok": "https://www.tiktok.com",
-        "e-mail": "https://mail.google.com"
+        "e-mail": "https://mail.google.com",
+        "calendario": "https://calendar.google.com/calendar/u/0/r",
+        "meet": "https://meet.google.com/landing?hs=197&authuser=0",
+        "google meet": "https://meet.google.com/landing?hs=197&authuser=0",
+        "drive": "https://drive.google.com/drive/u/0/home",
+        "google drive": "https://drive.google.com/drive/u/0/home"
     }
     return "Sites disponíveis:\n" + "\n".join(f"- {k}" for k in sites.keys())
 
@@ -1235,8 +1317,7 @@ def responder_com_gemini_fallback(match, username):
 
 # ========== Lista de comandos ATUALIZADA ==========
 padroes = [
-    # ===== WINAPPS - Gerenciamento de Aplicativos =====
-    (re.compile(r'\blistar\s+(?:os\s+)?aplicativos\s+instalados\b', re.IGNORECASE), 
+    (re.compile(r'\blistar\s+(?:os\s+)?(?:apps|aplicativos)\s+instalados\b', re.IGNORECASE), 
      listar_aplicativos_winapps),
     
     (re.compile(r'\binforma[çc][õo]es?\s+(?:do\s+)?(?:app|aplicativo)\s+(.+)', re.IGNORECASE), 
@@ -1244,26 +1325,22 @@ padroes = [
     
     (re.compile(r'\bdesinstalar\s+(?:app|aplicativo)\s+(.+)', re.IGNORECASE), 
      lambda m, u: desinstalar_app_winapps(m.group(1).strip(), u)),
-    
-    # ===== PYWHATKIT - WhatsApp =====
-# Regex melhorados para comandos do WhatsApp
-    (re.compile(r'\benviar\s+(?:uma\s+)?(?:mensagem\s+)?whatsapp\s+(?:mensagem\s+)?(?:agendad[ao]|programad[ao])?\b', re.IGNORECASE), 
-    enviar_whatsapp_agendado),
 
-    (re.compile(r'\benviar\s+(?:uma\s+)?(?:mensagem\s+)?whatsapp\s+(?:para\s+)?(?:um\s+)?grupo\b', re.IGNORECASE), 
-    enviar_whatsapp_grupo),
+    (re.compile(r'\benviar\s+(?:uma\s+)?(?:mensagem\s+)?(?:para\s+o?\s+)?(?:um\s+)?grupo\b', re.IGNORECASE), 
+     enviar_whatsapp_grupo),
+    
+    (re.compile(r'\benviar\s+(?:uma\s+)?(?:mensagem\s+)?(?:agendad[ao]|programad[ao])?\b', re.IGNORECASE), 
+    enviar_whatsapp_agendado),
 
     (re.compile(r'\benviar\s+(?:uma\s+)?mensagem\b', re.IGNORECASE), 
     enviar_whatsapp),
     
-    # ===== PYWHATKIT - YouTube e Pesquisa =====
     (re.compile(r'\btocar\s+(?:m[úu]sica|v[íi]deo)\s+(?:no\s+)?youtube\b', re.IGNORECASE), 
      tocar_musica_pywhatkit),
     
     (re.compile(r'\b(?:pesquisar|buscar|procurar|pesquise|busque|procure)\s+(?:por\s+)?(.+?)\s+(?:no\s+)?google$', re.IGNORECASE), 
      pesquisar_google_pywhatkit),
     
-    # ===== Comandos originais =====
     (re.compile(r'\b(listar|mostrar|exibir)\s+(os\s+)?sites\b', re.IGNORECASE), listar_sites),
     
     (re.compile(r'\banalisar\s+arquivo\s+(.+)', re.IGNORECASE), lambda m, u: analisar_arquivos(m, u)),
@@ -1285,7 +1362,7 @@ padroes = [
     (re.compile(r'\b(parar|finalizar)\s+(?:vídeo|video|gravação|gravacao|tela)\b', re.IGNORECASE), 
      lambda m, u: parar_gravacao_sistema()),
     
-    (re.compile(r'\b(iniciar|abrir|executar)\s+(youtube|netflix|microsoft teams|github|instagram|tik\s*tok|tiktok|e-?mail|email|whatsapp)\b', re.IGNORECASE), 
+    (re.compile(r'\b(iniciar|abrir|executar)\s+(youtube|netflix|microsoft teams|github|instagram|tik\s*tok|tiktok|e-?mail|email|whatsapp|google met|calendario|meet|drive|google drive)\b', re.IGNORECASE), 
      abrir_site),
     
     (re.compile(r'\b(executar|abrir|iniciar)\s+(.+)', re.IGNORECASE), 
@@ -1294,7 +1371,6 @@ padroes = [
     (re.compile(r'\banalisar\s+imagem\s+(.+)', re.IGNORECASE), 
      lambda m, u: analisar_imagem_comando(m.group(1).strip(), u)),
     
-    # Agenda
     (re.compile(r'\babrir\s+agenda\b', re.IGNORECASE), abrir_agenda),
     (re.compile(r'\b(?:ler|ver|mostrar)\s+agenda\b', re.IGNORECASE), ler_agenda),
     (re.compile(r'\blimpar\s+agenda\b', re.IGNORECASE), limpar_agenda),
@@ -1303,24 +1379,19 @@ padroes = [
     (re.compile(r'\badicionar\s+tarefa\b', re.IGNORECASE), iniciar_insercao_agenda),
     (re.compile(r'\bmarcar\s+(?:como\s+)?feita\s+(.+)', re.IGNORECASE), marcar_como_feita),
     
-    # Sistema
     (re.compile(r'\bverificar\s+atualiza[çc][õo]es\b', re.IGNORECASE), verificar_atualizacoes),
     (re.compile(r'\batualizar\s+sistema\b', re.IGNORECASE), atualizar_sistema),
     (re.compile(r'\blimpar\s+lixo\b', re.IGNORECASE), limpar_lixo),
     
-    # Data e hora
     (re.compile(r'\bque\s+horas?\s+s[ãa]o\b', re.IGNORECASE), falar_hora),
     (re.compile(r'\bque\s+dia\s+[ée]\s+hoje\b', re.IGNORECASE), falar_data),
     
-    # Pastas
     (re.compile(r'\babrir\s+(?:pasta\s+)?(.+)', re.IGNORECASE), abrir_pasta),
     
-    # Arquivos
     (re.compile(r'\blistar\s+arquivos(?:\s+\.(\w+))?(?:\s+em\s+(.+))?', re.IGNORECASE), listar_arquivos),
     (re.compile(r'\bcriar\s+(?:arquivo\s+)?de\s+texto\b', re.IGNORECASE), criar_arquivo),
     (re.compile(r'\bcriar\s+(?:c[óo]digo|programa)\b', re.IGNORECASE), criar_codigo),
     
-    # Limpar memória
     (re.compile(r'\blimpar\s+mem[óo]ria\b', re.IGNORECASE), limpar_memoria_do_usuario_command),
     ]
 # ========== Enhanced Command Processor ==========

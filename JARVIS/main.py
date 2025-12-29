@@ -122,13 +122,12 @@ def mostrar_comandos_jarvis():
             ("abrir [nome do app]", "Abre aplicativo usando winapps"),
         ],
         "💬 Mensagem(Whatsapp)": [
-            ("enviar whatsapp agendado", "Envia mensagem no WhatsApp (agendado)"),
-            ("enviar mensagem", "Envia mensagem instantânea"),
-            ("enviar whatsapp grupo", "Envia mensagem para grupo"),
+            ("enviar uma mensagem agendado", "Envia mensagem no WhatsApp (agendado)"),
+            ("enviar uma mensagem", "Envia mensagem instantânea"),
+            ("enviar uma mensagem para um grupo", "Envia mensagem para grupo"),
         ],
         "🔍 Pesquisa": [
-            ("pesquisar no google [termo]", "Pesquisa no Google"),
-            ("google pesquisar [termo]", "Pesquisa no Google (alternativo)"),
+            ("pesquisar [termo] no google", "Pesquisa no Google"),
         ],
         "🎵 YouTube": [
             ("tocar música no youtube", "Abre música no YouTube"),
@@ -136,7 +135,7 @@ def mostrar_comandos_jarvis():
         ],
         "🌐 Análise": [
             ("analisar site [url]", "Analisa o conteúdo de um site"),
-            ("analisar arquivo [caminho]", "Analisa o conteúdo de um arquivo"),
+            ("analisar arquivo [caminho]", "Analisa o conteúdo de um arquivo usando IA"),
             ("analisar imagem [caminho]", "Analisa uma imagem usando IA"),
         ],
         "💾 Instalação e Downloads": [
@@ -159,7 +158,6 @@ def mostrar_comandos_jarvis():
             ("criar código", "Gera código de programação"),
             ("listar arquivos [extensão]", "Lista arquivos por extensão"),
             ("abrir pasta [nome]", "Abre uma pasta específica"),
-            ("ler arquivo [caminho]", "Lê o conteúdo de um arquivo"),
         ],
         "📅 Agenda": [
             ("ler agenda", "Mostra todas as tarefas da agenda"),
@@ -176,11 +174,11 @@ def mostrar_comandos_jarvis():
             ("limpar memória", "Limpa o histórico de conversas"),
         ],
         "🌐 Sites": [
-            ("iniciar youtube", "Abre YouTube no navegador"),
+            ("abrir youtube", "Abre YouTube no navegador"),
             ("abrir netflix", "Abre Netflix no navegador"),
-            ("iniciar github", "Abre GitHub no navegador"),
+            ("abrir github", "Abre GitHub no navegador"),
             ("abrir instagram", "Abre Instagram no navegador"),
-            ("iniciar whatsapp", "Abre WhatsApp Web"),
+            ("abrir whatsapp", "Abre WhatsApp Web"),
             ("abrir email", "Abre Gmail no navegador"),
         ],
     }
@@ -198,7 +196,7 @@ def mostrar_dicas():
     """Mostra dicas de uso"""
     print(f"{Colors.GRAY}╭─ Dicas para começar ───────────────────────────────────────╮{Colors.RESET}")
     print(f"{Colors.GRAY}│{Colors.RESET} {Colors.WHITE}1.{Colors.RESET} Pergunte qualquer coisa ou execute tarefas            {Colors.GRAY}│{Colors.RESET}")
-    print(f"{Colors.GRAY}│{Colors.RESET} {Colors.WHITE}2.{Colors.RESET} Digite {Colors.PURPLE}/help{Colors.RESET} para comandos especiais com /           {Colors.GRAY}│{Colors.RESET}")
+    print(f"{Colors.GRAY}│{Colors.RESET} {Colors.WHITE}2.{Colors.RESET} Digite {Colors.PURPLE}/help{Colors.RESET} para informações com /           {Colors.GRAY}│{Colors.RESET}")
     print(f"{Colors.GRAY}│{Colors.RESET} {Colors.WHITE}3.{Colors.RESET} Digite {Colors.PURPLE}/comandos{Colors.RESET} para ver todos os comandos do JARVIS  {Colors.GRAY}│{Colors.RESET}")
     print(f"{Colors.GRAY}╰────────────────────────────────────────────────────────────╯{Colors.RESET}")
     print()
