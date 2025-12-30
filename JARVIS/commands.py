@@ -18,7 +18,7 @@ from datetime import datetime
 import pandas as pd
 import google.generativeai as genai
 from PIL import Image
-from memory import limpar_memoria_do_usuario, responder_com_gemini, registrar_log
+from memory import limpar_memoria_do_usuario, responder_com_gemini, registrar_log, obter_senha_smtp,salvar_senha_smtp
 import fitz
 from docx import Document
 from pptx import Presentation
@@ -28,6 +28,13 @@ from queue import Queue
 from typing import Callable
 import warnings
 import pywhatkit as kit
+import smtplib
+from email.mime.text import MIMEText
+from email.mime.multipart import MIMEMultipart
+from email.mime.base import MIMEBase
+from email import encoders
+import mimetypes
+from getpass import getpass
 import winapps
 
 warnings.filterwarnings('ignore')
@@ -53,6 +60,7 @@ class Colors:
     DIM = '\033[2m'
     RESET = '\033[0m'
     CLEAR_LINE = '\033[2K'
+
 # ========== Configurações de voz ==========
 class VoiceCommandSystem:
     def __init__(self):
@@ -324,10 +332,10 @@ def info_aplicativo_winapps(nome_app, username=None):
 # ========== PYWHATKIT - Automação de WhatsApp ==========
 
 def enviar_whatsapp_agendado(match, username=None, modo='texto'):
-    """Envia mensagem no WhatsApp com horário agendado - CORRIGIDO"""
+    """Envia mensagem no WhatsApp com horário agendado"""
     try:
-        numero = input("Digite o número com DDI (ex: +5511999999999): ").strip()
-        mensagem = input("Digite a mensagem: ").strip()
+        numero = input(f"{Colors.PURPLE}>{Colors.RESET} Digite o número com DDI (ex: +5511999999999): ").strip()
+        mensagem = input(f"{Colors.PURPLE}>{Colors.RESET} Digite a mensagem: ").strip()
         
         # Agenda para pelo menos 2 minutos à frente
         agora = datetime.now()
@@ -374,10 +382,10 @@ def enviar_whatsapp_agendado(match, username=None, modo='texto'):
 
 
 def enviar_whatsapp(match, username=None, modo='texto'):
-    """Envia mensagem instantânea no WhatsApp - CORRIGIDO"""
+    """Envia mensagem instantânea no WhatsApp"""
     try:
-        numero = input("Digite o número com DDI (ex: +5511999999999): ").strip()
-        mensagem = input("Digite a mensagem: ").strip()
+        numero = input(f"{Colors.PURPLE}>{Colors.RESET} Digite o número com DDI (ex: +5511999999999): ").strip()
+        mensagem = input(f"{Colors.PURPLE}>{Colors.RESET} Digite a mensagem: ").strip()
         
         msg = f"Enviando mensagem instantânea para {numero}..."
         if modo == 'voz':
@@ -517,7 +525,7 @@ def enviar_whatsapp_grupo(match, username=None, modo='texto'):
 def tocar_musica_pywhatkit(match, username=None, modo='texto'):
     """Toca música no YouTube usando pywhatkit"""
     try:
-        musica = input("Qual música deseja ouvir, senhor?\n>> ").strip()
+        musica = input(f"{Colors.PURPLE}>{Colors.RESET} Qual música deseja ouvir, senhor? ").strip()
         
         if not musica:
             return "Nenhuma música informada, senhor."
@@ -536,7 +544,7 @@ def tocar_musica_pywhatkit(match, username=None, modo='texto'):
 
 
 def pesquisar_google_pywhatkit(match, username=None, modo='texto'):
-    """Pesquisa no Google usando pywhatkit - versão corrigida"""
+    """Pesquisa no Google usando pywhatkit"""
     try:
         # Tenta extrair o termo de pesquisa de diferentes grupos
         termo = None
@@ -548,7 +556,7 @@ def pesquisar_google_pywhatkit(match, username=None, modo='texto'):
             termo = match.group(1).strip()
         else:
             # Se não conseguir extrair do match, pergunta ao usuário
-            termo = input("O que deseja pesquisar no Google, senhor?\n>> ").strip()
+            termo = input(f"{Colors.PURPLE}>{Colors.RESET} O que deseja pesquisar no Google, senhor? ").strip()
         
         if not termo:
             return "Por favor especifique o que deseja pesquisar, senhor."
@@ -565,6 +573,74 @@ def pesquisar_google_pywhatkit(match, username=None, modo='texto'):
     except Exception as e:
         return f"Erro ao pesquisar: {e}"
 
+
+# ========== Funções de E-mail (SMTP) ==========
+def enviar_email(match=None, username=None, modo="texto"):
+    servidor = "smtp.gmail.com"
+    porta = 587
+
+    email_salvo, senha_salva = obter_senha_smtp(username)
+
+    if email_salvo and senha_salva:
+        remetente = email_salvo
+        senha = senha_salva
+        print("✓ Credenciais SMTP carregadas da memória")
+    else:
+        remetente = input("Seu e-mail Gmail: ").strip()
+        print("Use SENHA DE APLICATIVO (16 caracteres)")
+        senha = getpass("Senha: ")
+        salvar_senha_smtp(username, remetente, senha)
+
+    destinatario = input("Para: ").strip()
+    assunto = input("Assunto: ").strip()
+
+    print("Mensagem (linha vazia encerra):")
+    linhas = []
+    while True:
+        linha = input("> ")
+        if not linha.strip():
+            break
+        linhas.append(linha)
+
+    mensagem = "\n".join(linhas) or "[Sem mensagem]"
+
+    anexo = None
+    if input("Anexar arquivo? (s/n): ").lower() in ("s", "sim"):
+        caminho = input("Caminho: ").strip()
+        if os.path.isfile(caminho):
+            anexo = caminho
+
+    msg = MIMEMultipart()
+    msg["From"] = remetente
+    msg["To"] = destinatario
+    msg["Subject"] = assunto
+    msg.attach(MIMEText(mensagem, "plain", "utf-8"))
+
+    if anexo:
+        with open(anexo, "rb") as f:
+            part = MIMEBase("application", "octet-stream")
+            part.set_payload(f.read())
+            encoders.encode_base64(part)
+            part.add_header(
+                "Content-Disposition",
+                f'attachment; filename="{os.path.basename(anexo)}"'
+            )
+            msg.attach(part)
+
+    try:
+        with smtplib.SMTP(servidor, porta, timeout=15) as server:
+            server.starttls()
+            server.login(remetente, senha)
+            server.send_message(msg)
+
+        registrar_log(username, f"E-mail enviado para {destinatario}")
+        return f"✅ E-mail enviado para {destinatario}"
+
+    except smtplib.SMTPAuthenticationError:
+        return "❌ Falha de autenticação SMTP (senha do app inválida)"
+
+    except Exception as e:
+        return f"❌ Erro ao enviar e-mail: {e}"
 
 # ========== Info Sites ==========
 def raspar_site(url):
@@ -810,13 +886,7 @@ def analisar_imagem_comando(caminho, username, modo='texto'):
 AGENDA_DIR = os.path.join(os.path.expanduser("~"), "Documents", "Agenda")
 os.makedirs(AGENDA_DIR, exist_ok=True)
 
-estado_insercao_agenda = {
-    "aguardando_tarefa": False,
-    "aguardando_data": False,
-    "aguardando_hora": False,
-    "tarefa_temp": "",
-    "data_temp": ""
-}
+estado_insercao_agenda = {}
 
 # ========== Funções da agenda ==========
 def get_agenda_path(username):
@@ -1065,10 +1135,16 @@ def limpar_lixo(match, username):
 
 # ========== Funções de data e hora ==========
 def falar_hora(match, username):
-    return f"Agora são {datetime.now().strftime('%H:%M')}"
+    hora = datetime.now().strftime('%H:%M')
+    if modo == 'voz':
+        falar(f"Agora são {hora}")
+    return f"Agora são {hora}"
 
 def falar_data(match, username):
-    return f"Hoje é dia {datetime.now().strftime('%d/%m/%Y')}"
+    data = datetime.now().strftime('%d/%m/%Y')
+    if modo == 'voz':
+        falar(f"Hoje é dia {data}")
+    return f"Hoje é dia {data}"
 
 # ========== Funções de pastas ==========
 def encontrar_pasta(nome_pasta_usuario):
@@ -1126,11 +1202,11 @@ def listar_sites(match, username):
 # ========== Criação e manipulação de arquivos ==========
 def criar_arquivo(match, username):
     documentos = Path.home() / "Documents"
-    nome = input("Digite o nome do arquivo (ex: texto.txt): ").strip()
+    nome = input(f"{Colors.PURPLE}>{Colors.RESET} Digite o nome do arquivo (ex: texto.txt): ").strip()
     if not nome:
         falar("Nome de arquivo inválido.")
         return "Operação cancelada."
-    conteudo = input("Digite o conteúdo que deseja salvar: ")
+    conteudo = input(f"{Colors.PURPLE}>{Colors.RESET} Digite o conteúdo que deseja salvar: ")
     caminho_completo = documentos / nome
     try:
         with open(caminho_completo, "w", encoding="utf-8") as f:
@@ -1142,8 +1218,8 @@ def criar_arquivo(match, username):
 def criar_codigo(match, username):
     documentos = Path.home() / "Documents"
     documentos.mkdir(exist_ok=True)
-    linguagem = input("Qual linguagem de programação você quer usar? ").strip().lower()
-    descricao = input("Descreva o que o código deve fazer: ").strip()
+    linguagem = input(f"{Colors.PURPLE}>{Colors.RESET} Qual linguagem de programação você quer usar? ").strip().lower()
+    descricao = input(f"{Colors.PURPLE}>{Colors.RESET} Descreva o que o código deve fazer: ").strip()
     prompt = f"Crie um código em {linguagem} que: {descricao}"
     try:
         codigo = responder_com_gemini(prompt, username)
@@ -1169,7 +1245,7 @@ def criar_codigo(match, username):
         "r": ".r"
     }
     ext = extensoes.get(linguagem, ".txt")
-    nome_arquivo = input("Nome do arquivo (sem extensão)? ").strip() + ext
+    nome_arquivo = input(f"{Colors.PURPLE}>{Colors.RESET} Nome do arquivo (sem extensão)? ").strip() + ext
     caminho = documentos / nome_arquivo
     try:
         with open(caminho, "w", encoding="utf-8") as f:
@@ -1315,8 +1391,13 @@ def responder_com_gemini_fallback(match, username):
     comando = match.group(0)
     return responder_com_gemini(comando, username)
 
-# ========== Lista de comandos ATUALIZADA ==========
+# ========== Lista de comandos ATUALIZADA com E-mail ==========
 padroes = [
+    # E-mail
+    (re.compile(r'\benviar\s+(?:um\s+)?e-?mail\b', re.IGNORECASE), 
+     enviar_email),
+    
+    # Aplicativos
     (re.compile(r'\blistar\s+(?:os\s+)?(?:apps|aplicativos)\s+instalados\b', re.IGNORECASE), 
      listar_aplicativos_winapps),
     
@@ -1326,6 +1407,7 @@ padroes = [
     (re.compile(r'\bdesinstalar\s+(?:app|aplicativo)\s+(.+)', re.IGNORECASE), 
      lambda m, u: desinstalar_app_winapps(m.group(1).strip(), u)),
 
+    # WhatsApp
     (re.compile(r'\benviar\s+(?:uma\s+)?(?:mensagem\s+)?(?:para\s+o?\s+)?(?:um\s+)?grupo\b', re.IGNORECASE), 
      enviar_whatsapp_grupo),
     
@@ -1335,42 +1417,55 @@ padroes = [
     (re.compile(r'\benviar\s+(?:uma\s+)?mensagem\b', re.IGNORECASE), 
     enviar_whatsapp),
     
+    # YouTube e Pesquisa
     (re.compile(r'\btocar\s+(?:m[úu]sica|v[íi]deo)\s+(?:no\s+)?youtube\b', re.IGNORECASE), 
      tocar_musica_pywhatkit),
     
     (re.compile(r'\b(?:pesquisar|buscar|procurar|pesquise|busque|procure)\s+(?:por\s+)?(.+?)\s+(?:no\s+)?google$', re.IGNORECASE), 
      pesquisar_google_pywhatkit),
     
+    # Sites
     (re.compile(r'\b(listar|mostrar|exibir)\s+(os\s+)?sites\b', re.IGNORECASE), listar_sites),
     
+    # Análises
     (re.compile(r'\banalisar\s+arquivo\s+(.+)', re.IGNORECASE), lambda m, u: analisar_arquivos(m, u)),
     
     (re.compile(r'\banalisar\s+site\s+(.+)', re.IGNORECASE), lambda m, u: analisar_site(m.group(1).strip(), u)),
     
+    # Instalação/Desinstalação
     (re.compile(r"\b(?:instalar|instale|quero instalar)\s+([a-zA-Z0-9\-\.]+)", re.IGNORECASE), 
      lambda m, u: instalar_programa_via_cmd_admin(m.group(1), u)),
+    
     (re.compile(r"\b(?:desinstalar|remover|apagar)\s+([a-zA-Z0-9\-\.]+)", re.IGNORECASE), 
      lambda m, u: desinstalar_programa(m.group(1), u, 'texto')),
     
+    # Download YouTube
     (re.compile(r"\b(baixar|fazer download de|salvar)\b.*?\b(vídeo|video)\b.*?(https?://[^\s]+)", re.IGNORECASE), 
      lambda m, u: baixar_video_youtube(m.group(3), u)),
+    
     (re.compile(r"\b(baixar|fazer download de|salvar)\b.*?\b(áudio|audio|som|mp3|musica|música)\b.*?(https?://[^\s]+)", re.IGNORECASE), 
      lambda m, u: baixar_audio_youtube(m.group(3), u)),
     
+    # Gravação de tela
     (re.compile(r'\b(gravar|iniciar)\s+(?:vídeo|video|gravação|gravacao|tela)\b', re.IGNORECASE), 
      lambda m, u: iniciar_gravacao_sistema()),
+    
     (re.compile(r'\b(parar|finalizar)\s+(?:vídeo|video|gravação|gravacao|tela)\b', re.IGNORECASE), 
      lambda m, u: parar_gravacao_sistema()),
     
+    # Abrir sites
     (re.compile(r'\b(iniciar|abrir|executar)\s+(youtube|netflix|microsoft teams|github|instagram|tik\s*tok|tiktok|e-?mail|email|whatsapp|google met|calendario|meet|drive|google drive)\b', re.IGNORECASE), 
      abrir_site),
     
+    # Abrir aplicativos
     (re.compile(r'\b(executar|abrir|iniciar)\s+(.+)', re.IGNORECASE), 
      abrir_aplicativo_winapps),
     
+    # Análise de imagem
     (re.compile(r'\banalisar\s+imagem\s+(.+)', re.IGNORECASE), 
      lambda m, u: analisar_imagem_comando(m.group(1).strip(), u)),
     
+    # Agenda
     (re.compile(r'\babrir\s+agenda\b', re.IGNORECASE), abrir_agenda),
     (re.compile(r'\b(?:ler|ver|mostrar)\s+agenda\b', re.IGNORECASE), ler_agenda),
     (re.compile(r'\blimpar\s+agenda\b', re.IGNORECASE), limpar_agenda),
@@ -1379,21 +1474,30 @@ padroes = [
     (re.compile(r'\badicionar\s+tarefa\b', re.IGNORECASE), iniciar_insercao_agenda),
     (re.compile(r'\bmarcar\s+(?:como\s+)?feita\s+(.+)', re.IGNORECASE), marcar_como_feita),
     
+    # Sistema
     (re.compile(r'\bverificar\s+atualiza[çc][õo]es\b', re.IGNORECASE), verificar_atualizacoes),
     (re.compile(r'\batualizar\s+sistema\b', re.IGNORECASE), atualizar_sistema),
     (re.compile(r'\blimpar\s+lixo\b', re.IGNORECASE), limpar_lixo),
     
+    # Data e hora
     (re.compile(r'\bque\s+horas?\s+s[ãa]o\b', re.IGNORECASE), falar_hora),
     (re.compile(r'\bque\s+dia\s+[ée]\s+hoje\b', re.IGNORECASE), falar_data),
     
+    # Pastas
     (re.compile(r'\babrir\s+(?:pasta\s+)?(.+)', re.IGNORECASE), abrir_pasta),
     
+    # Arquivos
     (re.compile(r'\blistar\s+arquivos(?:\s+\.(\w+))?(?:\s+em\s+(.+))?', re.IGNORECASE), listar_arquivos),
     (re.compile(r'\bcriar\s+(?:arquivo\s+)?de\s+texto\b', re.IGNORECASE), criar_arquivo),
     (re.compile(r'\bcriar\s+(?:c[óo]digo|programa)\b', re.IGNORECASE), criar_codigo),
     
+    # Memória
     (re.compile(r'\blimpar\s+mem[óo]ria\b', re.IGNORECASE), limpar_memoria_do_usuario_command),
-    ]
+]
+
+# Variável global para modo
+modo = 'texto'
+
 # ========== Enhanced Command Processor ==========
 def processar_comando(comando: str, username: str, modo: str = 'texto'):
     """

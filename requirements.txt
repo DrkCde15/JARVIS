@@ -23,3 +23,6 @@ python-dotenv
 pyfiglet
 winapps
 pywhatkit
+smtplib
+getpass
+mimetypes

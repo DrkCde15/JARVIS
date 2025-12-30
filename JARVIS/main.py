@@ -7,7 +7,7 @@ import threading
 from queue import Queue
 import speech_recognition as sr
 from commands import processar_comando, falar, checar_tarefas_atrasadas
-from memory import responder_com_gemini, criar_usuario, autenticar_usuario, atualizar_senha_usuario, atualizar_username_usuario, verificar_usuario_existe
+from memory import criar_usuario, autenticar_usuario, atualizar_senha_usuario, atualizar_username_usuario, verificar_usuario_existe
 
 class Colors:
     """Códigos ANSI para cores e estilos"""
@@ -123,8 +123,11 @@ def mostrar_comandos_jarvis():
         ],
         "💬 Mensagem(Whatsapp)": [
             ("enviar uma mensagem agendado", "Envia mensagem no WhatsApp (agendado)"),
-            ("enviar uma mensagem", "Envia mensagem instantânea"),
-            ("enviar uma mensagem para um grupo", "Envia mensagem para grupo"),
+            ("enviar uma mensagem", "Envia mensagem para um contato no WhatsApp"),
+            ("enviar uma mensagem para o grupo", "Envia mensagem para grupo"),
+        ],
+        "💬 Enviar email": [
+            ("enviar email", "Envia email para um destinatário podendo ter um anxexo"),
         ],
         "🔍 Pesquisa": [
             ("pesquisar [termo] no google", "Pesquisa no Google"),
