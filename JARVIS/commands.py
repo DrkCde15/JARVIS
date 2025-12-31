@@ -1,7 +1,6 @@
 import json
 import os
 import re
-from tkinter import messagebox, simpledialog
 import unicodedata
 import subprocess
 import requests
@@ -14,7 +13,7 @@ import pyautogui # type: ignore
 from bs4 import BeautifulSoup
 import yt_dlp # type: ignore
 import time
-from datetime import datetime
+from datetime import datetime, timedelta
 import pandas as pd
 import google.generativeai as genai
 from PIL import Image
@@ -33,14 +32,12 @@ from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 from email.mime.base import MIMEBase
 from email import encoders
-import mimetypes
 from getpass import getpass
 import winapps
 
 warnings.filterwarnings('ignore')
 if "USER_AGENT" not in os.environ:
     os.environ["USER_AGENT"] = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/115.0.0.0 Safari/537.36"
-
 
 # ========== Cores ==========
 class Colors:
@@ -190,8 +187,6 @@ def instalar_programa_choco(programa):
         print(f"[-] Falha ao instalar {programa}.")
         return False
 
-#=========== Função Principal ==========
-
 def instalar_programa_via_cmd_admin(programa=None, username=None):
     """Função principal para instalar programas via choco com privilégios admin"""
     if not programa:
@@ -228,7 +223,7 @@ def desinstalar_programa(nome_programa, username, modo='texto'):
     except Exception as e:
         return f"Erro ao desinstalar {nome_programa}: {e}"
 
-# ========== WINAPPS - Gerenciamento de Aplicativos ==========
+# ========== Gerenciamento de Aplicativos ==========
 
 def listar_aplicativos_winapps(match=None, username=None):
     """Lista todos os aplicativos instalados usando winapps"""
@@ -329,7 +324,7 @@ def info_aplicativo_winapps(nome_app, username=None):
         return f"Erro ao obter informações: {e}"
 
 
-# ========== PYWHATKIT - Automação de WhatsApp ==========
+# ========== Automação de WhatsApp ==========
 
 def enviar_whatsapp_agendado(match, username=None, modo='texto'):
     """Envia mensagem no WhatsApp com horário agendado"""
@@ -520,7 +515,7 @@ def enviar_whatsapp_grupo(match, username=None, modo='texto'):
     except Exception as e:
         return f"Erro geral: {e}"
 
-# ========== PYWHATKIT - YouTube e Pesquisa ==========
+# ========== YouTube e Pesquisa ==========
 
 def tocar_musica_pywhatkit(match, username=None, modo='texto'):
     """Toca música no YouTube usando pywhatkit"""
@@ -574,7 +569,7 @@ def pesquisar_google_pywhatkit(match, username=None, modo='texto'):
         return f"Erro ao pesquisar: {e}"
 
 
-# ========== Funções de E-mail (SMTP) ==========
+# ========== Funções de E-mail ==========
 def enviar_email(match=None, username=None, modo="texto"):
     servidor = "smtp.gmail.com"
     porta = 587
@@ -841,11 +836,6 @@ def parar_gravacao_sistema(username=None):
     
 # ========== Funções de imagens ==========
 class ImageAnalyser:
-    """
-    Use essa ferramenta para analisar qualquer tipo de imagem enviada pelo usuário.
-    Descreve o conteúdo visual da imagem, objetos, pessoas, textos (se houver), cenários e qualquer informação relevante.
-    """
-
     def __init__(self):
         self.model = genai.GenerativeModel("gemini-1.5-flash")
 
@@ -882,191 +872,618 @@ def analisar_imagem_comando(caminho, username, modo='texto'):
         falar(resultado)
     return resultado
 
-# ========== Variáveis para agenda ==========
-AGENDA_DIR = os.path.join(os.path.expanduser("~"), "Documents", "Agenda")
-os.makedirs(AGENDA_DIR, exist_ok=True)
+# ========== Funções de agenda ==========
 
-estado_insercao_agenda = {}
+AGENDA_DIR = Path.home() / "Documents" / "Agenda"
+AGENDA_DIR.mkdir(parents=True, exist_ok=True)
+COLUNAS = ["Tarefa", "DataHora", "Status"]
 
-# ========== Funções da agenda ==========
-def get_agenda_path(username):
-    safe_user = re.sub(r'[^a-zA-Z0-9_-]', '', username.lower())
-    return os.path.join(AGENDA_DIR, f"agenda_{safe_user}.xlsx")
+def _sanitize_username(username: str) -> str:
+    return re.sub(r"[^a-zA-Z0-9_-]", "", username.lower())
 
-def inicializar_agenda(username):
+def get_agenda_path(username: str) -> Path:
+    return AGENDA_DIR / f"agenda_{_sanitize_username(username)}.xlsx"
+
+def inicializar_agenda(username: str) -> None:
     path = get_agenda_path(username)
-    if not os.path.exists(path):
-        df = pd.DataFrame(columns=["Tarefa", "Data", "Hora", "Status"])
+    if not path.exists():
+        df = pd.DataFrame(columns=COLUNAS)
         df.to_excel(path, index=False)
 
-def abrir_agenda(match, username):
-    path = get_agenda_path(username)
+def ler_agenda_df(username: str) -> pd.DataFrame:
     inicializar_agenda(username)
-    try:
-        os.startfile(path)
-        return f"Abrindo a agenda de {username} agora, senhor."
-    except Exception as e:
-        return f"Erro ao abrir agenda: {e}"
-
-def ler_agenda(match, username):
     path = get_agenda_path(username)
-    if not os.path.exists(path):
-        return f"Não encontrei a agenda de {username}, senhor."
-    df = pd.read_excel(path)
-    if df.empty:
-        return f"A agenda de {username} está vazia, senhor."
-    return df.to_string(index=False)
-
-def limpar_agenda(match, username):
-    path = get_agenda_path(username)
-    if os.path.exists(path):
-        df = pd.DataFrame(columns=["Tarefa", "Data", "Hora", "Status"])
-        df.to_excel(path, index=False)
-        return f"Agenda de {username} limpa com sucesso, senhor."
-    return f"Arquivo da agenda de {username} não encontrado, senhor."
-
-def marcar_como_feita(match, username):
+    
     try:
-        tarefa_busca = match.group(1).strip().lower()
-        path = get_agenda_path(username)
-        if not os.path.exists(path):
-            return f"Agenda de {username} não encontrada, senhor."
         df = pd.read_excel(path)
-        tarefas = df[df["Tarefa"].str.lower().str.contains(tarefa_busca)]
-        if len(tarefas) == 0:
-            return f"Tarefa contendo '{tarefa_busca}' não encontrada na agenda de {username}, senhor."
-        elif len(tarefas) > 1:
-            return "Múltiplas tarefas encontradas. Seja mais específico, senhor."
-        else:
-            idx = tarefas.index[0]
-            df.at[idx, "Status"] = "Concluído"
-            df.to_excel(path, index=False)
-            return f"Tarefa '{df.at[idx, 'Tarefa']}' marcada como concluída na agenda de {username}, senhor."
+        
+        # Garantir que as colunas existam
+        for coluna in COLUNAS:
+            if coluna not in df.columns:
+                df[coluna] = None
+        
+        if not df.empty and "DataHora" in df.columns:
+            df["DataHora"] = pd.to_datetime(df["DataHora"], errors="coerce")
+        
+        return df
     except Exception as e:
-        return f"Erro ao marcar tarefa: {str(e)}"
+        print(f"Erro ao ler agenda: {e}")
+        # Retornar dataframe vazio em caso de erro
+        return pd.DataFrame(columns=COLUNAS)
 
-def adicionar_tarefa_completa(match, username):
+def salvar_agenda_df(df: pd.DataFrame, username: str) -> None:
     try:
-        tarefa = match.group(2).strip()
-        data = match.group(3) if match.group(3) else datetime.now().strftime("%d/%m/%Y")
-        hora = match.group(4) if match.group(4) else ""
-        datetime.strptime(data, "%d/%m/%Y")
-        if hora and not re.match(r'^\d{2}:\d{2}$', hora):
-            return "Formato de horário inválido. Use HH:MM."
-        path = get_agenda_path(username)
-        nova_entrada = {
-            "Tarefa": tarefa,
-            "Data": data,
-            "Hora": hora,
-            "Status": "Pendente"
-        }
-        if os.path.exists(path):
-            df = pd.read_excel(path)
-            df = pd.concat([df, pd.DataFrame([nova_entrada])], ignore_index=True)
-        else:
-            df = pd.DataFrame([nova_entrada])
-        df.to_excel(path, index=False)
-        return f"Tarefa adicionada: '{tarefa}' para {data}{f' às {hora}' if hora else ''} na agenda de {username}."
-    except ValueError:
-        return "Formato de data inválido. Use DD/MM/AAAA."
+        df.to_excel(get_agenda_path(username), index=False)
     except Exception as e:
-        return f"Erro: {str(e)}"
+        print(f"Erro ao salvar agenda: {e}")
 
-def salvar_tarefa_na_agenda(tarefa, data, hora, username, status="Pendente"):
-    path = get_agenda_path(username)
-    if not os.path.exists(path):
-        df = pd.DataFrame(columns=["Tarefa", "Data", "Hora", "Status"])
-    else:
-        df = pd.read_excel(path)
-    nova_entrada = pd.DataFrame([{
-        "Tarefa": tarefa,
-        "Data": data,
-        "Hora": hora,
-        "Status": status
+def _parse_datetime(data: str, hora: str | None) -> datetime:
+    if hora:
+        return datetime.strptime(f"{data} {hora}", "%d/%m/%Y %H:%M")
+    return datetime.strptime(data, "%d/%m/%Y")
+
+# =========================
+# FUNÇÕES CRUD DA AGENDA
+# =========================
+# No início da execução do programa, adicione:
+def inicializar_sistema_agenda(username):
+    """Inicializa o sistema de agenda para o usuário"""
+    # Criar diretório se não existir
+    AGENDA_DIR.mkdir(parents=True, exist_ok=True)
+    
+    # Inicializar agenda
+    inicializar_agenda(username)
+    
+    # Verificar tarefas atrasadas no início
+    print(f"{Colors.YELLOW}⏳ Verificando tarefas atrasadas...{Colors.RESET}")
+    checar_tarefas_atrasadas(username, modo='texto')
+    
+    # Mostrar tarefas de hoje
+    hoje = agenda_hoje(username, modo='texto')
+    if "Nenhuma tarefa para hoje" not in hoje:
+        print(hoje)
+
+def adicionar_tarefa(tarefa: str, data: str, hora: str | None, username: str) -> str:
+    """Função base para adicionar tarefa (usada pelas outras funções)"""
+    try:
+        dt = _parse_datetime(data, hora)
+    except ValueError as e:
+        return f"❌ Data ou hora inválida. Use DD/MM/AAAA e HH:MM. Erro: {e}"
+
+    df = ler_agenda_df(username)
+
+    nova = pd.DataFrame([{
+        "Tarefa": tarefa.strip(),
+        "DataHora": dt,
+        "Status": "Pendente"
     }])
-    df = pd.concat([df, nova_entrada], ignore_index=True)
-    df.to_excel(path, index=False)
 
-def checar_tarefas_atrasadas(username):
-    path = get_agenda_path(username)
-    if not os.path.exists(path):
-        return
+    df = pd.concat([df, nova], ignore_index=True)
+    salvar_agenda_df(df, username)
 
+    hora_str = f" às {dt.strftime('%H:%M')}" if hora else ""
+    return f"✅ Tarefa '{tarefa}' adicionada para {dt.strftime('%d/%m/%Y')}{hora_str}"
+
+def adicionar_tarefa_interativa(match, username, modo='texto'):
+    """Versão interativa que pede os dados via input"""
     try:
-        df = pd.read_excel(path, engine='openpyxl')
+        print(f"\n{Colors.CYAN}📝 Adicionar nova tarefa{Colors.RESET}")
+        print(f"{Colors.GRAY}{'='*40}{Colors.RESET}")
+        
+        tarefa = input(f"{Colors.PURPLE}>{Colors.RESET} Descrição da tarefa: ").strip()
+        if not tarefa:
+            return "❌ Tarefa não pode ser vazia."
+        
+        data = input(f"{Colors.PURPLE}>{Colors.RESET} Data (DD/MM/AAAA): ").strip()
+        if not data:
+            return "❌ Data é obrigatória."
+        
+        hora = input(f"{Colors.PURPLE}>{Colors.RESET} Hora (HH:MM ou Enter para sem hora): ").strip()
+        if not hora:
+            hora = None
+        
+        resultado = adicionar_tarefa(tarefa, data, hora, username)
+        
+        if modo == 'voz':
+            if "✅" in resultado:
+                falar("Tarefa adicionada com sucesso")
+            else:
+                falar("Erro ao adicionar tarefa")
+        
+        return resultado
+        
     except Exception as e:
-        print(f"Erro ao abrir o arquivo de tarefas: {e}")
-        return
+        return f"❌ Erro ao adicionar tarefa: {e}"
 
-    df["Tarefa"] = df["Tarefa"].astype(str).apply(
-        lambda x: x.encode('latin1', errors='ignore').decode('latin1'))
+def listar_agenda(username, modo='texto'):
+    """Lista todas as tarefas da agenda"""
+    df = ler_agenda_df(username)
+
+    if df.empty:
+        mensagem = "📭 Agenda vazia."
+        if modo == 'voz':
+            falar("Sua agenda está vazia")
+        return mensagem
+
+    # Ordenar por data
+    df = df.sort_values('DataHora')
+    
+    linhas = [f"\n{Colors.CYAN}📅 Agenda de {username}{Colors.RESET}"]
+    linhas.append(f"{Colors.GRAY}{'='*40}{Colors.RESET}")
 
     agora = datetime.now()
-    tarefas_atrasadas = []
-
-    for idx, row in df.iterrows():
-        if row["Status"] != "Concluído" and pd.notna(row["Data"]):
+    atrasadas = 0
+    concluidas = 0
+    
+    for i, row in df.iterrows():
+        # Converter para datetime se for string
+        if isinstance(row["DataHora"], str):
             try:
-                data_str = f"{row['Data']} {row['Hora'] if pd.notna(row['Hora']) else '00:00'}"
-                data_tarefa = datetime.strptime(data_str, "%d/%m/%Y %H:%M")
-                if data_tarefa < agora:
-                    tarefas_atrasadas.append((idx, row["Tarefa"]))
-            except Exception:
-                continue
+                data_hora = datetime.strptime(row["DataHora"], "%Y-%m-%d %H:%M:%S")
+            except:
+                data_hora = agora
+        else:
+            data_hora = row["DataHora"]
+        
+        status = "✅" if row["Status"] == "Concluído" else "⏳"
+        
+        # Verificar se está atrasada
+        if row["Status"] != "Concluído" and data_hora < agora:
+            status = f"{Colors.RED}⚠{Colors.RESET}"
+            atrasadas += 1
+        
+        if row["Status"] == "Concluído":
+            concluidas += 1
+            
+        data_str = data_hora.strftime("%d/%m/%Y %H:%M") if pd.notna(data_hora) else "Sem data"
+        linhas.append(f"{i+1}. {status} {row['Tarefa']} — {data_str}")
 
-    if tarefas_atrasadas:
-        for idx, tarefa in tarefas_atrasadas:
-            opcao = messagebox.askquestion(
-                "Tarefa atrasada",
-                f"'{tarefa}' está atrasada. Marcar como concluída?",
-                icon='warning'
-            )
-            if opcao == 'yes':
-                df.at[idx, "Status"] = "Concluído"
+    # Adicionar resumo
+    total = len(df)
+    linhas.append(f"\n{Colors.GRAY}{'='*40}{Colors.RESET}")
+    linhas.append(f"📊 Resumo: {total} tarefas")
+    linhas.append(f"   ✅ Concluídas: {concluidas}")
+    linhas.append(f"   ⏳ Pendentes: {total - concluidas}")
+    
+    if atrasadas > 0:
+        linhas.append(f"   {Colors.RED}⚠ Atrasadas: {atrasadas}{Colors.RESET}")
+    
+    resultado = "\n".join(linhas)
+    
+    if modo == 'voz':
+        falar(f"Sua agenda tem {total} tarefas. {concluidas} concluídas, {atrasadas} atrasadas")
+    
+    return resultado
+
+def marcar_como_concluida(termo: str, username: str) -> str:
+    """Função base para marcar tarefa como concluída"""
+    df = ler_agenda_df(username)
+
+    if df.empty:
+        return "❌ Agenda vazia."
+
+    mask = df["Tarefa"].str.lower().str.contains(termo.lower(), na=False)
+    encontrados = df[mask]
+
+    if encontrados.empty:
+        return f"❌ Nenhuma tarefa encontrada com '{termo}'."
+
+    if len(encontrados) > 1:
+        # Mostrar múltiplas correspondências
+        linhas = ["⚠ Mais de uma tarefa encontrada. Selecione:"]
+        for i, (idx, row) in enumerate(encontrados.iterrows(), 1):
+            data = row["DataHora"].strftime("%d/%m/%Y %H:%M") if pd.notna(row["DataHora"]) else "Sem data"
+            linhas.append(f"{i}. {row['Tarefa']} — {data}")
+        return "\n".join(linhas)
+
+    idx = encontrados.index[0]
+    df.at[idx, "Status"] = "Concluído"
+    salvar_agenda_df(df, username)
+    return f"✅ Tarefa '{df.at[idx, 'Tarefa']}' marcada como concluída."
+
+def marcar_como_concluida_comando(match, username, modo='texto'):
+    """Wrapper para extrair termo do comando ou modo interativo"""
+    termo = ""
+    
+    if match.lastindex >= 1:
+        termo = match.group(1).strip()
+    
+    if not termo:
+        # Modo interativo
+        print(f"\n{Colors.CYAN}✅ Marcar tarefa como concluída{Colors.RESET}")
+        df = ler_agenda_df(username)
+        
+        if df.empty:
+            return "📭 Agenda vazia."
+        
+        # Mostrar apenas tarefas pendentes
+        pendentes = df[df["Status"] != "Concluído"]
+        if pendentes.empty:
+            return "🎉 Todas as tarefas já estão concluídas!"
+        
+        print(f"\n{Colors.YELLOW}Tarefas pendentes:{Colors.RESET}")
+        for i, row in pendentes.iterrows():
+            data = row["DataHora"].strftime("%d/%m/%Y %H:%M") if pd.notna(row["DataHora"]) else "Sem data"
+            print(f"{i+1}. {row['Tarefa']} — {data}")
+        
+        try:
+            escolha = input(f"\n{Colors.PURPLE}>{Colors.RESET} Número da tarefa ou nome: ").strip()
+            
+            # Tentar como número
+            if escolha.isdigit():
+                num = int(escolha)
+                if 1 <= num <= len(pendentes):
+                    tarefa = pendentes.iloc[num-1]["Tarefa"]
+                    termo = tarefa
+                else:
+                    return "❌ Número inválido."
             else:
-                nova_data = simpledialog.askstring("Remarcar tarefa", f"Nova data para '{tarefa}' (DD/MM/AAAA):")
-                nova_hora = simpledialog.askstring("Remarcar tarefa", f"Nova hora para '{tarefa}' (HH:MM):")
-                if nova_data:
-                    df.at[idx, "Data"] = nova_data
+                # Usar como termo de busca
+                termo = escolha
+        except:
+            termo = input(f"{Colors.PURPLE}>{Colors.RESET} Nome da tarefa: ").strip()
+    
+    resultado = marcar_como_concluida(termo, username)
+    
+    if modo == 'voz':
+        if "✅" in resultado:
+            falar("Tarefa marcada como concluída")
+        elif "⚠" in resultado:
+            falar("Múltiplas tarefas encontradas")
+        else:
+            falar("Erro ao marcar tarefa")
+    
+    return resultado
+
+def remover_tarefa(termo: str, username: str) -> str:
+    """Função base para remover tarefa"""
+    df = ler_agenda_df(username)
+
+    if df.empty:
+        return "❌ Agenda vazia."
+
+    mask = df["Tarefa"].str.lower().str.contains(termo.lower(), na=False)
+    encontrados = df[mask]
+
+    if encontrados.empty:
+        return f"❌ Nenhuma tarefa encontrada com '{termo}'."
+
+    if len(encontrados) > 1:
+        # Mostrar múltiplas correspondências
+        linhas = ["⚠ Mais de uma tarefa encontrada. Selecione:"]
+        for i, (idx, row) in enumerate(encontrados.iterrows(), 1):
+            status = "✅" if row["Status"] == "Concluído" else "⏳"
+            data = row["DataHora"].strftime("%d/%m/%Y %H:%M") if pd.notna(row["DataHora"]) else "Sem data"
+            linhas.append(f"{i}. {status} {row['Tarefa']} — {data}")
+        return "\n".join(linhas)
+
+    idx = encontrados.index[0]
+    tarefa = df.at[idx, "Tarefa"]
+
+    df = df.drop(index=idx)
+    salvar_agenda_df(df, username)
+
+    return f"🗑 Tarefa '{tarefa}' removida."
+
+def remover_tarefa_comando(match, username, modo='texto'):
+    """Wrapper para remover tarefa (interativo ou por comando)"""
+    termo = ""
+    
+    if match.lastindex >= 1:
+        termo = match.group(1).strip()
+    
+    if not termo:
+        # Modo interativo
+        print(f"\n{Colors.CYAN}🗑 Remover tarefa{Colors.RESET}")
+        df = ler_agenda_df(username)
+        
+        if df.empty:
+            return "📭 Agenda vazia."
+        
+        print(f"\n{Colors.YELLOW}Todas as tarefas:{Colors.RESET}")
+        for i, row in df.iterrows():
+            status = "✅" if row["Status"] == "Concluído" else "⏳"
+            data = row["DataHora"].strftime("%d/%m/%Y %H:%M") if pd.notna(row["DataHora"]) else "Sem data"
+            print(f"{i+1}. {status} {row['Tarefa']} — {data}")
+        
+        try:
+            escolha = input(f"\n{Colors.PURPLE}>{Colors.RESET} Número da tarefa para remover: ").strip()
+            
+            # Tentar como número
+            if escolha.isdigit():
+                num = int(escolha)
+                if 1 <= num <= len(df):
+                    tarefa = df.iloc[num-1]["Tarefa"]
+                    termo = tarefa
+                else:
+                    return "❌ Número inválido."
+            else:
+                # Usar como termo de busca
+                termo = escolha
+        except:
+            termo = input(f"{Colors.PURPLE}>{Colors.RESET} Nome da tarefa para remover: ").strip()
+    
+    resultado = remover_tarefa(termo, username)
+    
+    if modo == 'voz':
+        if "🗑" in resultado:
+            falar("Tarefa removida")
+        elif "⚠" in resultado:
+            falar("Múltiplas tarefas encontradas")
+        else:
+            falar("Erro ao remover tarefa")
+    
+    return resultado
+
+def limpar_agenda_completa(username, modo='texto'):
+    """Remove todas as tarefas da agenda"""
+    confirmar = input(f"{Colors.RED}⚠ Tem certeza que deseja limpar TODA a agenda? (s/n): {Colors.RESET}").strip().lower()
+    if confirmar in ['s', 'sim', 'y', 'yes']:
+        try:
+            path = get_agenda_path(username)
+            if path.exists():
+                path.unlink()
+            inicializar_agenda(username)
+            
+            resultado = "🗑 Agenda completamente limpa!"
+            if modo == 'voz':
+                falar("Agenda limpa com sucesso")
+            return resultado
+        except Exception as e:
+            return f"❌ Erro ao limpar agenda: {e}"
+    else:
+        return "❌ Operação cancelada."
+
+def agenda_hoje(username, modo='texto'):
+    """Mostra tarefas para hoje"""
+    hoje = datetime.now().date()
+    
+    df = ler_agenda_df(username)
+    if df.empty:
+        mensagem = "📭 Agenda vazia."
+        if modo == 'voz':
+            falar("Sua agenda está vazia")
+        return mensagem
+    
+    # Filtrar tarefas de hoje
+    df['Data'] = df['DataHora'].dt.date
+    hoje_tarefas = df[df['Data'] == hoje]
+    
+    if hoje_tarefas.empty:
+        mensagem = "🎉 Nenhuma tarefa para hoje!"
+        if modo == 'voz':
+            falar("Você não tem tarefas para hoje")
+        return mensagem
+    
+    # Separar concluídas e pendentes
+    concluidas = hoje_tarefas[hoje_tarefas["Status"] == "Concluído"]
+    pendentes = hoje_tarefas[hoje_tarefas["Status"] != "Concluído"]
+    
+    linhas = [f"\n{Colors.CYAN}📅 Tarefas para hoje ({hoje.strftime('%d/%m/%Y')}){Colors.RESET}"]
+    linhas.append(f"{Colors.GRAY}{'='*40}{Colors.RESET}")
+    
+    if not pendentes.empty:
+        linhas.append(f"{Colors.YELLOW}⏳ Pendentes:{Colors.RESET}")
+        for i, row in pendentes.iterrows():
+            hora = row["DataHora"].strftime("%H:%M") if pd.notna(row["DataHora"]) else "Dia todo"
+            linhas.append(f"  • {row['Tarefa']} — {hora}")
+    
+    if not concluidas.empty:
+        linhas.append(f"\n{Colors.GREEN}✅ Concluídas:{Colors.RESET}")
+        for i, row in concluidas.iterrows():
+            hora = row["DataHora"].strftime("%H:%M") if pd.notna(row["DataHora"]) else "Dia todo"
+            linhas.append(f"  • {row['Tarefa']} — {hora}")
+    
+    # Resumo
+    linhas.append(f"\n{Colors.GRAY}{'='*40}{Colors.RESET}")
+    linhas.append(f"📊 Hoje: {len(pendentes)} pendentes, {len(concluidas)} concluídas")
+    
+    resultado = "\n".join(linhas)
+    
+    if modo == 'voz':
+        if len(pendentes) > 0:
+            falar(f"Você tem {len(pendentes)} tarefas pendentes para hoje")
+        else:
+            falar("Todas as tarefas de hoje estão concluídas")
+    
+    return resultado
+
+def agenda_proximas(username, modo='texto', dias=7):
+    """Mostra tarefas dos próximos dias"""
+    hoje = datetime.now().date()
+    futuro = hoje + timedelta(days=dias)
+    
+    df = ler_agenda_df(username)
+    if df.empty:
+        return "📭 Agenda vazia."
+    
+    # Filtrar tarefas dos próximos dias
+    df['Data'] = df['DataHora'].dt.date
+    proximas = df[(df['Data'] >= hoje) & (df['Data'] <= futuro)]
+    
+    if proximas.empty:
+        return f"🎉 Nenhuma tarefa para os próximos {dias} dias!"
+    
+    # Agrupar por data
+    linhas = [f"\n{Colors.CYAN}📅 Próximas tarefas ({dias} dias){Colors.RESET}"]
+    linhas.append(f"{Colors.GRAY}{'='*40}{Colors.RESET}")
+    
+    for data in sorted(proximas['Data'].unique()):
+        tarefas_data = proximas[proximas['Data'] == data]
+        
+        if data == hoje:
+            data_str = f"{Colors.YELLOW}Hoje ({data.strftime('%d/%m')}){Colors.RESET}"
+        else:
+            data_str = data.strftime("%d/%m (%A)")
+        
+        linhas.append(f"\n📌 {data_str}:")
+        
+        for _, row in tarefas_data.iterrows():
+            status = "✅" if row["Status"] == "Concluído" else "⏳"
+            hora = row["DataHora"].strftime("%H:%M") if pd.notna(row["DataHora"]) else "Dia todo"
+            linhas.append(f"  {status} {row['Tarefa']} — {hora}")
+    
+    resultado = "\n".join(linhas)
+    
+    if modo == 'voz':
+        total = len(proximas)
+        falar(f"Você tem {total} tarefas nos próximos {dias} dias")
+    
+    return resultado
+
+def editar_tarefa(match, username, modo='texto'):
+    """Edita uma tarefa existente"""
+    try:
+        print(f"\n{Colors.CYAN}✏️ Editar tarefa{Colors.RESET}")
+        df = ler_agenda_df(username)
+        
+        if df.empty:
+            return "📭 Agenda vazia."
+        
+        print(f"\n{Colors.YELLOW}Todas as tarefas:{Colors.RESET}")
+        for i, row in df.iterrows():
+            status = "✅" if row["Status"] == "Concluído" else "⏳"
+            data = row["DataHora"].strftime("%d/%m/%Y %H:%M") if pd.notna(row["DataHora"]) else "Sem data"
+            print(f"{i+1}. {status} {row['Tarefa']} — {data}")
+        
+        escolha = input(f"\n{Colors.PURPLE}>{Colors.RESET} Número da tarefa para editar: ").strip()
+        
+        if not escolha.isdigit():
+            return "❌ Por favor, digite um número."
+        
+        num = int(escolha)
+        if not (1 <= num <= len(df)):
+            return "❌ Número inválido."
+        
+        idx = num - 1
+        
+        print(f"\n{Colors.GRAY}Deixe em branco para manter o valor atual{Colors.RESET}")
+        
+        # Editar descrição
+        atual_desc = df.at[idx, "Tarefa"]
+        nova_desc = input(f"Nova descrição (atual: '{atual_desc}'): ").strip()
+        if nova_desc:
+            df.at[idx, "Tarefa"] = nova_desc
+        
+        # Editar data/hora
+        atual_data = df.at[idx, "DataHora"]
+        if pd.notna(atual_data):
+            data_str = atual_data.strftime("%d/%m/%Y")
+            hora_str = atual_data.strftime("%H:%M")
+        else:
+            data_str = "Sem data"
+            hora_str = ""
+        
+        nova_data = input(f"Nova data DD/MM/AAAA (atual: {data_str}): ").strip()
+        nova_hora = input(f"Nova hora HH:MM (atual: {hora_str}): ").strip()
+        
+        if nova_data:
+            try:
                 if nova_hora:
-                    df.at[idx, "Hora"] = nova_hora
-        df.to_excel(path, index=False)
+                    nova_dt = _parse_datetime(nova_data, nova_hora)
+                else:
+                    nova_dt = _parse_datetime(nova_data, None)
+                df.at[idx, "DataHora"] = nova_dt
+            except ValueError as e:
+                return f"❌ Data/hora inválida: {e}"
+        
+        # Editar status
+        atual_status = df.at[idx, "Status"]
+        novo_status = input(f"Status (C)oncluído/(P)endente (atual: {atual_status}): ").strip().lower()
+        if novo_status in ['c', 'concluido', 'concluído']:
+            df.at[idx, "Status"] = "Concluído"
+        elif novo_status in ['p', 'pendente']:
+            df.at[idx, "Status"] = "Pendente"
+        
+        salvar_agenda_df(df, username)
+        
+        resultado = f"✅ Tarefa '{df.at[idx, 'Tarefa']}' editada com sucesso."
+        
+        if modo == 'voz':
+            falar("Tarefa editada com sucesso")
+        
+        return resultado
+        
+    except Exception as e:
+        return f"❌ Erro ao editar tarefa: {e}"
 
-def iniciar_insercao_agenda(username):
-    estado_insercao_agenda[username] = {
-        "aguardando_tarefa": True,
-        "aguardando_data": False,
-        "aguardando_hora": False,
-        "tarefa_temp": "",
-        "data_temp": ""
-    }
-    return "Qual tarefa gostaria de adicionar, senhor?"
+def checar_tarefas_atrasadas(username, modo='texto'):
+    """Verifica e gerencia tarefas atrasadas"""
+    df = ler_agenda_df(username)
 
-def processar_resposta_insercao(comando, username):
-    estado = estado_insercao_agenda.get(username)
-    if not estado:
-        return "Nenhuma inserção em andamento, senhor."
+    if df.empty:
+        if modo == 'voz':
+            falar("Sua agenda está vazia")
+        return "📭 Agenda vazia."
 
-    if estado["aguardando_tarefa"]:
-        estado["tarefa_temp"] = comando
-        estado["aguardando_tarefa"] = False
-        estado["aguardando_data"] = True
-        return "Qual a data da tarefa (formato DD/MM/AAAA), senhor?"
-    elif estado["aguardando_data"]:
-        estado["data_temp"] = comando
-        estado["aguardando_data"] = False
-        estado["aguardando_hora"] = True
-        return "Qual o horário da tarefa (ex: 14:00), senhor?"
-    elif estado["aguardando_hora"]:
-        tarefa = estado["tarefa_temp"]
-        data = estado["data_temp"]
-        hora = comando
-        salvar_tarefa_na_agenda(tarefa, data, hora, username)
-        estado["aguardando_hora"] = False
-        estado["tarefa_temp"] = ""
-        estado["data_temp"] = ""
-        del estado_insercao_agenda[username]
-        return f"Tarefa '{tarefa}' adicionada para o dia {data} às {hora}, senhor."
+    agora = datetime.now()
+
+    atrasadas = df[
+        (df["Status"] != "Concluído") &
+        (df["DataHora"] < agora)
+    ]
+
+    if atrasadas.empty:
+        if modo == 'voz':
+            falar("Você não tem tarefas atrasadas")
+        return "✅ Nenhuma tarefa atrasada!"
+
+    mensagem = f"\n{Colors.RED}⚠ {len(atrasadas)} TAREFA(S) ATRASADA(S) ⚠{Colors.RESET}"
+    
+    if modo == 'voz':
+        falar(f"ATENÇÃO! Você tem {len(atrasadas)} tarefas atrasadas!")
+    
+    print(mensagem)
+    
+    resultados = []
+    
+    for idx, row in atrasadas.iterrows():
+        print(f"\n{Colors.GRAY}{'='*40}{Colors.RESET}")
+        print(f"{Colors.RED}Tarefa atrasada:{Colors.RESET} {row['Tarefa']}")
+        print(f"{Colors.RED}Devia ser feita em:{Colors.RESET} {row['DataHora'].strftime('%d/%m/%Y %H:%M')}")
+        print(f"\n{Colors.YELLOW}O que deseja fazer?{Colors.RESET}")
+        print("1. Marcar como concluída")
+        print("2. Remarcar para nova data")
+        print("3. Remover tarefa")
+        print("4. Manter como está")
+
+        escolha = input(f"{Colors.PURPLE}> Escolha (1-4): {Colors.RESET}").strip()
+
+        if escolha == "1":
+            df.at[idx, "Status"] = "Concluído"
+            resultados.append(f"✅ '{row['Tarefa']}' marcada como concluída")
+            if modo == 'voz':
+                falar(f"Tarefa {row['Tarefa']} marcada como concluída")
+
+        elif escolha == "2":
+            nova_data = input("Nova data (DD/MM/AAAA): ").strip()
+            nova_hora = input("Nova hora (HH:MM ou Enter): ").strip() or None
+
+            try:
+                nova_dt = _parse_datetime(nova_data, nova_hora)
+                df.at[idx, "DataHora"] = nova_dt
+                resultados.append(f"📅 '{row['Tarefa']}' remarcada para {nova_dt.strftime('%d/%m/%Y %H:%M')}")
+                if modo == 'voz':
+                    falar(f"Tarefa {row['Tarefa']} remarcada")
+            except ValueError:
+                resultados.append(f"❌ Data inválida para '{row['Tarefa']}'. Mantida como está.")
+
+        elif escolha == "3":
+            confirmar = input(f"Tem certeza que deseja remover '{row['Tarefa']}'? (s/n): ").strip().lower()
+            if confirmar in ['s', 'sim', 'y', 'yes']:
+                df = df.drop(index=idx)
+                resultados.append(f"🗑 '{row['Tarefa']}' removida")
+                if modo == 'voz':
+                    falar(f"Tarefa {row['Tarefa']} removida")
+            else:
+                resultados.append(f"❌ '{row['Tarefa']}' não removida")
+
+    if resultados:
+        salvar_agenda_df(df, username)
+        resultados.insert(0, f"\n{Colors.GREEN}✅ Ações realizadas:{Colors.RESET}")
+        return "\n".join(resultados)
+    
+    return "⚠ Nenhuma ação realizada nas tarefas atrasadas."
 
 # ========== Abrir sites ==========
 def abrir_site(match, username):
@@ -1391,7 +1808,7 @@ def responder_com_gemini_fallback(match, username):
     comando = match.group(0)
     return responder_com_gemini(comando, username)
 
-# ========== Lista de comandos ATUALIZADA com E-mail ==========
+# ========== Lista de comandos ==========
 padroes = [
     # E-mail
     (re.compile(r'\benviar\s+(?:um\s+)?e-?mail\b', re.IGNORECASE), 
@@ -1465,14 +1882,25 @@ padroes = [
     (re.compile(r'\banalisar\s+imagem\s+(.+)', re.IGNORECASE), 
      lambda m, u: analisar_imagem_comando(m.group(1).strip(), u)),
     
-    # Agenda
-    (re.compile(r'\babrir\s+agenda\b', re.IGNORECASE), abrir_agenda),
-    (re.compile(r'\b(?:ler|ver|mostrar)\s+agenda\b', re.IGNORECASE), ler_agenda),
-    (re.compile(r'\blimpar\s+agenda\b', re.IGNORECASE), limpar_agenda),
-    (re.compile(r'\badicionar\s+tarefa\s+"([^"]+)"\s+(?:para\s+)?(\d{2}/\d{2}/\d{4})(?:\s+às\s+(\d{2}:\d{2}))?', re.IGNORECASE), 
-     adicionar_tarefa_completa),
-    (re.compile(r'\badicionar\s+tarefa\b', re.IGNORECASE), iniciar_insercao_agenda),
-    (re.compile(r'\bmarcar\s+(?:como\s+)?feita\s+(.+)', re.IGNORECASE), marcar_como_feita),
+     # Agenda
+    (re.compile(r'\b(?:ler|ver|mostrar|listar)\s+agenda\b', re.IGNORECASE), 
+    lambda m, u, modo='texto': listar_agenda(u, modo)),
+    (re.compile(r'\bagenda\s+hoje\b', re.IGNORECASE), 
+    lambda m, u, modo='texto': agenda_hoje(u, modo)),
+    (re.compile(r'\bagenda\s+proximas?\b', re.IGNORECASE), 
+    lambda m, u, modo='texto': agenda_proximas(u, modo)),
+    (re.compile(r'\badicionar\s+tarefa$', re.IGNORECASE), 
+    lambda m, u, modo='texto': adicionar_tarefa_interativa(m, u, modo)),
+    (re.compile(r'\bmarcar\s+(?:como\s+)?(?:feita|conclu[íi]da|finalizada)\s+(.+)', re.IGNORECASE), 
+    lambda m, u, modo='texto': marcar_como_concluida_comando(m, u, modo)),
+    (re.compile(r'\b(?:remover|deletar|apagar|excluir)\s+tarefa\s+(.+)', re.IGNORECASE), 
+    lambda m, u, modo='texto': remover_tarefa_comando(m, u, modo)),
+    (re.compile(r'\blimpar\s+agenda\b', re.IGNORECASE), 
+    lambda m, u, modo='texto': limpar_agenda_completa(u, modo)),
+    (re.compile(r'\beditar\s+tarefa\b', re.IGNORECASE), 
+    lambda m, u, modo='texto': editar_tarefa(m, u, modo)),
+    (re.compile(r'\bchecar\s+(?:tarefas\s+)?atrasadas\b', re.IGNORECASE), 
+    lambda m, u, modo='texto': checar_tarefas_atrasadas(u, modo)),
     
     # Sistema
     (re.compile(r'\bverificar\s+atualiza[çc][õo]es\b', re.IGNORECASE), verificar_atualizacoes),
@@ -1499,55 +1927,56 @@ padroes = [
 modo = 'texto'
 
 # ========== Enhanced Command Processor ==========
-def processar_comando(comando: str, username: str, modo: str = 'texto'):
-    """
-    Processa um comando do usuário comparando com os padrões registrados.
-    Retorna a resposta da ação correspondente ou usa fallback com Gemini.
-    """
+def processar_comando(comando: str, username: str, modo: str = "texto"):
+    """Processa um comando do usuário de forma determinística"""
+
     comando = comando.strip()
 
     if not comando:
         return "Nenhum comando recebido, senhor."
 
-    # 1️⃣ Inserção de tarefa em andamento (estado conversacional)
-    if username in estado_insercao_agenda:
-        resposta = processar_resposta_insercao(comando, username)
-        if modo == 'voz':
-            falar(resposta)
-        return resposta
-
-    # 2️⃣ Match contra padrões registrados
+    # 1️⃣ BUSCA DIRETA NOS PADRÕES
     for padrao, acao in padroes:
         match = padrao.search(comando)
-        if match:
-            try:
-                resultado = acao(match, username)
+        if not match:
+            continue
 
-                # Algumas funções retornam objeto Gemini
-                if hasattr(resultado, "content"):
-                    resultado = resultado.content
+        try:
+            # 🔹 Ação pode ou não usar regex groups
+            resultado = acao(match, username)
 
-                if resultado and modo == 'voz':
-                    falar(resultado)
+            # 🔹 Gemini às vezes retorna objeto
+            if hasattr(resultado, "content"):
+                resultado = resultado.content
 
-                registrar_log(username, f"Comando: {comando}")
-                registrar_log(username, f"Resposta: {resultado}")
+            if not resultado:
+                resultado = "Comando executado, senhor."
 
-                return resultado or "Comando executado, senhor."
+            if modo == "voz":
+                falar(resultado)
 
-            except Exception as e:
-                erro = f"Erro ao executar comando: {e}"
-                registrar_log(username, erro)
-                return erro
+            return resultado
 
-    # 3️⃣ Nenhum padrão reconhecido → fallback IA
+        except Exception as e:
+            erro = f"Erro ao executar comando: {e}"
+            if modo == "voz":
+                falar(erro)
+            return erro
+
+    # 2️⃣ FALLBACK PARA GEMINI (ÚLTIMO RECURSO)
     try:
         resposta = responder_com_gemini(comando, username)
+
         if hasattr(resposta, "content"):
             resposta = resposta.content
-        if modo == 'voz':
+
+        if modo == "voz":
             falar(resposta)
-        registrar_log(username, f"Fallback Gemini: {comando}")
+
         return resposta
+
     except Exception as e:
-        return f"Não consegui processar o comando, senhor. Erro: {e}"
+        erro = f"Não consegui processar o comando, senhor. Erro: {e}"
+        if modo == "voz":
+            falar(erro)
+        return erro
