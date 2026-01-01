@@ -16,7 +16,7 @@ Seja para abrir aplicativos, analisar arquivos, criar códigos, instalar program
 ✅ **Configurações de Usúario** – Alteração de username e senha.   
 ✅ **Integração com Gemini** – Respostas inteligentes e criação de conteúdos automáticos.   
 ✅ **Envio de mensagens automatizado (Whatsapp Web)** – Mande mensagens automaticas apenas digitando numero e a mensagem.  
-✅ **Envio de E-mails automatizado** – Envie emails de forma automática.
+✅ **Envio de E-mails automatizado** – Envie emails de forma automática.  
 ✅ **Abrir Sites, Apps e Pastas** – Apenas diga ou digite o comando("abrir pasta documentos", "abrir netflix", "acessar word").  
 ✅ **Gerenciamento de Agenda (Excel)** – Criar, listar e adicionar tarefas.  
 ✅ **Leitura e Análise de Arquivos** – PDF, DOCX, PPTX, XLSX e mais.  
