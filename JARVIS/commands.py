@@ -34,6 +34,7 @@ from email.mime.base import MIMEBase
 from email import encoders
 from getpass import getpass
 import winapps
+from plyer import notification  # Biblioteca para notificações
 
 warnings.filterwarnings('ignore')
 if "USER_AGENT" not in os.environ:
@@ -925,24 +926,6 @@ def _parse_datetime(data: str, hora: str | None) -> datetime:
 # =========================
 # FUNÇÕES CRUD DA AGENDA
 # =========================
-# No início da execução do programa, adicione:
-def inicializar_sistema_agenda(username):
-    """Inicializa o sistema de agenda para o usuário"""
-    # Criar diretório se não existir
-    AGENDA_DIR.mkdir(parents=True, exist_ok=True)
-    
-    # Inicializar agenda
-    inicializar_agenda(username)
-    
-    # Verificar tarefas atrasadas no início
-    print(f"{Colors.YELLOW}⏳ Verificando tarefas atrasadas...{Colors.RESET}")
-    checar_tarefas_atrasadas(username, modo='texto')
-    
-    # Mostrar tarefas de hoje
-    hoje = agenda_hoje(username, modo='texto')
-    if "Nenhuma tarefa para hoje" not in hoje:
-        print(hoje)
-
 def adicionar_tarefa(tarefa: str, data: str, hora: str | None, username: str) -> str:
     """Função base para adicionar tarefa (usada pelas outras funções)"""
     try:
@@ -1235,7 +1218,7 @@ def limpar_agenda_completa(username, modo='texto'):
         return "❌ Operação cancelada."
 
 def agenda_hoje(username, modo='texto'):
-    """Mostra tarefas para hoje"""
+    """Mostra tarefas para hoje COM NOTIFICAÇÃO"""
     hoje = datetime.now().date()
     
     df = ler_agenda_df(username)
@@ -1253,6 +1236,18 @@ def agenda_hoje(username, modo='texto'):
         mensagem = "🎉 Nenhuma tarefa para hoje!"
         if modo == 'voz':
             falar("Você não tem tarefas para hoje")
+        
+        # Notificação positiva
+        try:
+            notification.notify(
+                title='🎉 JARVIS - Sem Tarefas!',
+                message='Você não tem tarefas para hoje!',
+                app_name='JARVIS Assistant',
+                timeout=5
+            )
+        except:
+            pass
+            
         return mensagem
     
     # Separar concluídas e pendentes
@@ -1267,6 +1262,21 @@ def agenda_hoje(username, modo='texto'):
         for i, row in pendentes.iterrows():
             hora = row["DataHora"].strftime("%H:%M") if pd.notna(row["DataHora"]) else "Dia todo"
             linhas.append(f"  • {row['Tarefa']} — {hora}")
+        
+        # Notificação com tarefas pendentes
+        try:
+            tasks_list = "\n".join([f"• {row['Tarefa']}" for _, row in pendentes.iterrows()[:3]])
+            if len(pendentes) > 3:
+                tasks_list += f"\n• e mais {len(pendentes) - 3} tarefas..."
+            
+            notification.notify(
+                title=f'📋 JARVIS - {len(pendentes)} Tarefa(s) Pendente(s)',
+                message=tasks_list,
+                app_name='JARVIS Assistant',
+                timeout=15
+            )
+        except:
+            pass
     
     if not concluidas.empty:
         linhas.append(f"\n{Colors.GREEN}✅ Concluídas:{Colors.RESET}")
@@ -1285,49 +1295,6 @@ def agenda_hoje(username, modo='texto'):
             falar(f"Você tem {len(pendentes)} tarefas pendentes para hoje")
         else:
             falar("Todas as tarefas de hoje estão concluídas")
-    
-    return resultado
-
-def agenda_proximas(username, modo='texto', dias=7):
-    """Mostra tarefas dos próximos dias"""
-    hoje = datetime.now().date()
-    futuro = hoje + timedelta(days=dias)
-    
-    df = ler_agenda_df(username)
-    if df.empty:
-        return "📭 Agenda vazia."
-    
-    # Filtrar tarefas dos próximos dias
-    df['Data'] = df['DataHora'].dt.date
-    proximas = df[(df['Data'] >= hoje) & (df['Data'] <= futuro)]
-    
-    if proximas.empty:
-        return f"🎉 Nenhuma tarefa para os próximos {dias} dias!"
-    
-    # Agrupar por data
-    linhas = [f"\n{Colors.CYAN}📅 Próximas tarefas ({dias} dias){Colors.RESET}"]
-    linhas.append(f"{Colors.GRAY}{'='*40}{Colors.RESET}")
-    
-    for data in sorted(proximas['Data'].unique()):
-        tarefas_data = proximas[proximas['Data'] == data]
-        
-        if data == hoje:
-            data_str = f"{Colors.YELLOW}Hoje ({data.strftime('%d/%m')}){Colors.RESET}"
-        else:
-            data_str = data.strftime("%d/%m (%A)")
-        
-        linhas.append(f"\n📌 {data_str}:")
-        
-        for _, row in tarefas_data.iterrows():
-            status = "✅" if row["Status"] == "Concluído" else "⏳"
-            hora = row["DataHora"].strftime("%H:%M") if pd.notna(row["DataHora"]) else "Dia todo"
-            linhas.append(f"  {status} {row['Tarefa']} — {hora}")
-    
-    resultado = "\n".join(linhas)
-    
-    if modo == 'voz':
-        total = len(proximas)
-        falar(f"Você tem {total} tarefas nos próximos {dias} dias")
     
     return resultado
 
@@ -1407,8 +1374,35 @@ def editar_tarefa(match, username, modo='texto'):
     except Exception as e:
         return f"❌ Erro ao editar tarefa: {e}"
 
+def notificar_tarefas_do_dia(username):
+    """Envia notificação com resumo das tarefas do dia"""
+    try:
+        df = ler_agenda_df(username)
+        if df.empty:
+            return
+        
+        hoje = datetime.now().date()
+        
+        # Filtrar tarefas de hoje
+        df['Data'] = df['DataHora'].dt.date
+        hoje_tarefas = df[df['Data'] == hoje]
+        
+        if not hoje_tarefas.empty:
+            concluidas = len(hoje_tarefas[hoje_tarefas["Status"] == "Concluído"])
+            pendentes = len(hoje_tarefas) - concluidas
+            
+            if pendentes > 0:
+                notification.notify(
+                    title='📅 JARVIS - Tarefas de Hoje',
+                    message=f'{pendentes} tarefa(s) pendente(s) para hoje',
+                    app_name='JARVIS Assistant',
+                    timeout=10
+                )
+    except Exception as e:
+        print(f"Erro ao notificar tarefas: {e}")
+
 def checar_tarefas_atrasadas(username, modo='texto'):
-    """Verifica e gerencia tarefas atrasadas"""
+    """Verifica e gerencia tarefas atrasadas COM NOTIFICAÇÕES"""
     df = ler_agenda_df(username)
 
     if df.empty:
@@ -1427,6 +1421,18 @@ def checar_tarefas_atrasadas(username, modo='texto'):
         if modo == 'voz':
             falar("Você não tem tarefas atrasadas")
         return "✅ Nenhuma tarefa atrasada!"
+
+    # 📢 EXIBIR NOTIFICAÇÃO DO WINDOWS
+    try:
+        notification.notify(
+            title='🚨 JARVIS - Tarefas Atrasadas!',
+            message=f'Você tem {len(atrasadas)} tarefa(s) atrasada(s)',
+            app_name='JARVIS Assistant',
+            timeout=10,  # 10 segundos
+            toast=False  # Para notificação padrão do Windows
+        )
+    except Exception as e:
+        print(f"⚠ Não foi possível exibir notificação: {e}")
 
     mensagem = f"\n{Colors.RED}⚠ {len(atrasadas)} TAREFA(S) ATRASADA(S) ⚠{Colors.RESET}"
     
@@ -1484,6 +1490,65 @@ def checar_tarefas_atrasadas(username, modo='texto'):
         return "\n".join(resultados)
     
     return "⚠ Nenhuma ação realizada nas tarefas atrasadas."
+
+def inicializar_sistema_agenda(username):
+    """Inicializa o sistema de agenda para o usuário COM NOTIFICAÇÕES PERIÓDICAS"""
+    # Criar diretório se não existir
+    AGENDA_DIR.mkdir(parents=True, exist_ok=True)
+    
+    # Inicializar agenda
+    inicializar_agenda(username)
+    
+    # Verificar tarefas atrasadas no início
+    print(f"{Colors.YELLOW}⏳ Verificando tarefas atrasadas...{Colors.RESET}")
+    
+    # Criar thread para verificar tarefas periodicamente
+    def verificar_periodicamente():
+        while True:
+            try:
+                # Verificar a cada 30 minutos
+                time.sleep(1800)  # 1800 segundos = 30 minutos
+                
+                # Verificar tarefas atrasadas
+                df = ler_agenda_df(username)
+                if df.empty:
+                    continue
+                
+                agora = datetime.now()
+                atrasadas = df[
+                    (df["Status"] != "Concluído") &
+                    (df["DataHora"] < agora)
+                ]
+                
+                if not atrasadas.empty:
+                    # Exibir notificação
+                    notification.notify(
+                        title='⏰ JARVIS - Lembrete de Tarefas',
+                        message=f'Você tem {len(atrasadas)} tarefa(s) atrasada(s)',
+                        app_name='JARVIS Assistant',
+                        timeout=10
+                    )
+                    
+                    # Falar alerta se modo voz estiver ativo
+                    if modo == 'voz':
+                        falar(f"Lembrete: você ainda tem {len(atrasadas)} tarefas atrasadas")
+                        
+            except Exception as e:
+                print(f"Erro na verificação periódica: {e}")
+                continue
+    
+    # Iniciar thread em segundo plano
+    threading.Thread(target=verificar_periodicamente, daemon=True).start()
+    
+    # Verificar tarefas atrasadas agora
+    resultado = checar_tarefas_atrasadas(username, modo='texto')
+    
+    # Mostrar tarefas de hoje
+    hoje = agenda_hoje(username, modo='texto')
+    if "Nenhuma tarefa para hoje" not in hoje:
+        print(hoje)
+    
+    return resultado
 
 # ========== Abrir sites ==========
 def abrir_site(match, username):
@@ -1887,13 +1952,11 @@ padroes = [
     lambda m, u, modo='texto': listar_agenda(u, modo)),
     (re.compile(r'\bagenda\s+hoje\b', re.IGNORECASE), 
     lambda m, u, modo='texto': agenda_hoje(u, modo)),
-    (re.compile(r'\bagenda\s+proximas?\b', re.IGNORECASE), 
-    lambda m, u, modo='texto': agenda_proximas(u, modo)),
     (re.compile(r'\badicionar\s+tarefa$', re.IGNORECASE), 
     lambda m, u, modo='texto': adicionar_tarefa_interativa(m, u, modo)),
     (re.compile(r'\bmarcar\s+(?:como\s+)?(?:feita|conclu[íi]da|finalizada)\s+(.+)', re.IGNORECASE), 
     lambda m, u, modo='texto': marcar_como_concluida_comando(m, u, modo)),
-    (re.compile(r'\b(?:remover|deletar|apagar|excluir)\s+tarefa\s+(.+)', re.IGNORECASE), 
+    (re.compile(r'\b(?:deletar|excluir)\s+tarefa\s+(.+)', re.IGNORECASE), 
     lambda m, u, modo='texto': remover_tarefa_comando(m, u, modo)),
     (re.compile(r'\blimpar\s+agenda\b', re.IGNORECASE), 
     lambda m, u, modo='texto': limpar_agenda_completa(u, modo)),
@@ -1901,6 +1964,8 @@ padroes = [
     lambda m, u, modo='texto': editar_tarefa(m, u, modo)),
     (re.compile(r'\bchecar\s+(?:tarefas\s+)?atrasadas\b', re.IGNORECASE), 
     lambda m, u, modo='texto': checar_tarefas_atrasadas(u, modo)),
+    (re.compile(r'\binicializar\s+agenda\b', re.IGNORECASE), 
+    lambda m, u, modo='texto': inicializar_sistema_agenda(u)),
     
     # Sistema
     (re.compile(r'\bverificar\s+atualiza[çc][õo]es\b', re.IGNORECASE), verificar_atualizacoes),
@@ -1929,9 +1994,7 @@ modo = 'texto'
 # ========== Enhanced Command Processor ==========
 def processar_comando(comando: str, username: str, modo: str = "texto"):
     """Processa um comando do usuário de forma determinística"""
-
     comando = comando.strip()
-
     if not comando:
         return "Nenhum comando recebido, senhor."
 

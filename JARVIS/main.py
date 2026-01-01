@@ -169,10 +169,6 @@ def mostrar_comandos_jarvis():
             ("marcar como feita [tarefa]", "Marca tarefa como concluída"),
             ("limpar agenda", "Remove todas as tarefas"),
         ],
-        "🕐 Data e Hora": [
-            ("que horas são", "Informa a hora atual"),
-            ("que dia é hoje", "Informa a data atual"),
-        ],
         "🧠 Memória": [
             ("limpar memória", "Limpa o histórico de conversas"),
         ],

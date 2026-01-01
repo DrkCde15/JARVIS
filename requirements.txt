@@ -25,4 +25,4 @@ winapps
 pywhatkit
 smtplib
 getpass
-mimetypes
+plyer
