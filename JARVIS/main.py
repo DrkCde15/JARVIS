@@ -10,9 +10,9 @@ from commands import processar_comando, falar, checar_tarefas_atrasadas
 from memory import (
     criar_usuario, autenticar_usuario, atualizar_senha_usuario, 
     atualizar_username_usuario, verificar_usuario_existe,
-    verificar_autenticacao_persistente, obter_ultimo_token_valido,
+    verificar_autenticacao_persistente,
     logout_usuario, invalidar_sessoes_usuario, listar_sessoes_ativas,
-    get_usuario_ativo, obter_usuario_por_username
+    get_usuario_ativo
 )
 
 class Colors:
@@ -108,9 +108,7 @@ def mostrar_comandos_slash():
         '/config': 'Abre configurações do usuário',
         '/sair': 'Encerra o JARVIS',
         '/voz': 'Ativa o modo de comando por voz',
-        '/texto': 'Volta ao modo de texto',
-        '/logout': 'Faz logout desta sessão',
-        '/sessoes': 'Mostra sessões ativas',
+        '/texto': 'Volta ao modo de texto'
     }
     
     print(f"\n{Colors.BOLD}{Colors.PURPLE}📋 Comandos Disponíveis{Colors.RESET}\n")
@@ -204,7 +202,6 @@ def mostrar_dicas():
     print(f"{Colors.GRAY}│{Colors.RESET} {Colors.WHITE}1.{Colors.RESET} Pergunte qualquer coisa ou execute tarefas            {Colors.GRAY}│{Colors.RESET}")
     print(f"{Colors.GRAY}│{Colors.RESET} {Colors.WHITE}2.{Colors.RESET} Digite {Colors.PURPLE}/help{Colors.RESET} para informações com /           {Colors.GRAY}│{Colors.RESET}")
     print(f"{Colors.GRAY}│{Colors.RESET} {Colors.WHITE}3.{Colors.RESET} Digite {Colors.PURPLE}/comandos{Colors.RESET} para ver todos os comandos do JARVIS  {Colors.GRAY}│{Colors.RESET}")
-    print(f"{Colors.GRAY}│{Colors.RESET} {Colors.WHITE}4.{Colors.RESET} Digite {Colors.PURPLE}/sessoes{Colors.RESET} para ver suas sessões ativas  {Colors.GRAY}│{Colors.RESET}")
     print(f"{Colors.GRAY}╰────────────────────────────────────────────────────────────╯{Colors.RESET}")
     print()
 
@@ -268,7 +265,6 @@ class SessionManager:
             self.token = token
             self.sessao_valida = True
             return True
-        
         return False
     
     def login_interativo(self):
@@ -429,10 +425,7 @@ def menu_configuracoes_usuario(username_atual, token_atual):
         print(f"{Colors.GRAY}Usuário atual: {Colors.CYAN}{username_atual}{Colors.RESET}\n")
         print(f"  {Colors.CYAN}1{Colors.RESET} {Colors.GRAY}→{Colors.RESET} Alterar senha")
         print(f"  {Colors.CYAN}2{Colors.RESET} {Colors.GRAY}→{Colors.RESET} Alterar username")
-        print(f"  {Colors.CYAN}3{Colors.RESET} {Colors.GRAY}→{Colors.RESET} Ver sessões ativas")
-        print(f"  {Colors.CYAN}4{Colors.RESET} {Colors.GRAY}→{Colors.RESET} Fazer logout desta sessão")
-        print(f"  {Colors.CYAN}5{Colors.RESET} {Colors.GRAY}→{Colors.RESET} Fazer logout de todos os dispositivos")
-        print(f"  {Colors.CYAN}6{Colors.RESET} {Colors.GRAY}→{Colors.RESET} Voltar ao menu principal\n")
+        print(f"  {Colors.CYAN}3{Colors.RESET} {Colors.GRAY}→{Colors.RESET} Voltar ao menu principal\n")
         
         escolha = input(f"{Colors.PURPLE}>{Colors.RESET} ").strip()
         
@@ -455,41 +448,7 @@ def menu_configuracoes_usuario(username_atual, token_atual):
             elif novo_username and novo_token:
                 username_atual, token_atual = novo_username, novo_token
             input(f"\n{Colors.GRAY}Pressione Enter para continuar...{Colors.RESET}")
-            
         elif escolha == "3":
-            sessoes = listar_sessoes_ativas(username_atual)
-            print(f"\n{Colors.BOLD}{Colors.PURPLE}📊 SESSÕES ATIVAS PARA {username_atual}{Colors.RESET}\n")
-            if not sessoes:
-                print(f"{Colors.GRAY}  Nenhuma sessão ativa.{Colors.RESET}")
-            else:
-                for i, sessao in enumerate(sessoes, 1):
-                    print(f"  {Colors.CYAN}{i}.{Colors.RESET} Sessão {sessao['id'][:8]}...")
-                    print(f"     Criada: {sessao['created_at']}")
-                    print(f"     Expira: {sessao['expires_at']}")
-                    print()
-            input(f"\n{Colors.GRAY}Pressione Enter para continuar...{Colors.RESET}")
-            
-        elif escolha == "4":
-            from memory import logout_usuario
-            if logout_usuario(username_atual, token_atual):
-                print_box_message("Logout", "Esta sessão foi encerrada.", "info")
-                input(f"\n{Colors.GRAY}Pressione Enter para fazer login...{Colors.RESET}")
-                return None, None
-            else:
-                print_box_message("Erro", "Falha ao fazer logout.", "error")
-                input(f"\n{Colors.GRAY}Pressione Enter para continuar...{Colors.RESET}")
-                
-        elif escolha == "5":
-            from memory import invalidar_sessoes_usuario
-            if invalidar_sessoes_usuario(username_atual):
-                print_box_message("Logout Total", "Todas as sessões foram encerradas.", "info")
-                input(f"\n{Colors.GRAY}Pressione Enter para fazer login...{Colors.RESET}")
-                return None, None
-            else:
-                print_box_message("Erro", "Falha ao encerrar sessões.", "error")
-                input(f"\n{Colors.GRAY}Pressione Enter para continuar...{Colors.RESET}")
-                
-        elif escolha == "6":
             break
         else:
             print_box_message("Erro", "Opção inválida.", "error")
