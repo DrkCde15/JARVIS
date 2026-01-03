@@ -13,7 +13,7 @@ import pyautogui # type: ignore
 from bs4 import BeautifulSoup
 import yt_dlp # type: ignore
 import time
-from datetime import datetime, timedelta
+from datetime import datetime
 import pandas as pd
 import google.generativeai as genai
 from PIL import Image
@@ -255,7 +255,6 @@ def buscar_aplicativo_winapps(nome_app):
     except Exception as e:
         print(f"Erro ao buscar aplicativo: {e}")
         return None
-
 
 def abrir_aplicativo_winapps(match, username=None):
     """Abre aplicativo usando winapps"""
@@ -829,16 +828,14 @@ def parar_gravacao_sistema(username=None):
     try:
         pyautogui.click(879,44, duration=0.5)
         time.sleep(1)
-
         return "Gravação parada."
     except Exception as e:
         return f"Erro ao parar gravação: {str(e)}"
 
-    
 # ========== Funções de imagens ==========
 class ImageAnalyser:
     def __init__(self):
-        self.model = genai.GenerativeModel("gemini-1.5-flash")
+        self.model = genai.GenerativeModel("gemini-1.0")
 
     def _run(self, image_path: str, username: str) -> str:
         try:
@@ -1558,6 +1555,7 @@ def abrir_site(match, username):
         "netflix": "https://www.netflix.com",
         "youtube": "https://youtube.com",
         "microsoft teams": "https://teams.microsoft.com",
+        "teams": "https://teams.microsoft.com",
         "instagram": "https://www.instagram.com",
         "whatsapp": "https://web.whatsapp.com",
         "tik tok": "https://www.tiktok.com",
@@ -1860,7 +1858,6 @@ def analisar_arquivos(match, username):
         prompt = f"Analise esse conteúdo extraído do arquivo:\n\n{conteudo}"
         resposta = responder_com_gemini(prompt, username)
         return resposta
-
     except Exception as e:
         return f"Erro ao analisar arquivo: {e}"
 
@@ -1935,6 +1932,9 @@ padroes = [
     (re.compile(r'\b(parar|finalizar)\s+(?:vídeo|video|gravação|gravacao|tela)\b', re.IGNORECASE), 
      lambda m, u: parar_gravacao_sistema()),
     
+    # Pastas
+    (re.compile(r'\babrir\s+(?:pasta\s+)?(.+)', re.IGNORECASE), abrir_pasta),
+    
     # Abrir sites
     (re.compile(r'\b(iniciar|abrir|executar)\s+(youtube|netflix|microsoft teams|github|instagram|tik\s*tok|tiktok|e-?mail|email|whatsapp|google met|calendario|meet|drive|google drive)\b', re.IGNORECASE), 
      abrir_site),
@@ -1975,9 +1975,6 @@ padroes = [
     # Data e hora
     (re.compile(r'\bque\s+horas?\s+s[ãa]o\b', re.IGNORECASE), falar_hora),
     (re.compile(r'\bque\s+dia\s+[ée]\s+hoje\b', re.IGNORECASE), falar_data),
-    
-    # Pastas
-    (re.compile(r'\babrir\s+(?:pasta\s+)?(.+)', re.IGNORECASE), abrir_pasta),
     
     # Arquivos
     (re.compile(r'\blistar\s+arquivos(?:\s+\.(\w+))?(?:\s+em\s+(.+))?', re.IGNORECASE), listar_arquivos),

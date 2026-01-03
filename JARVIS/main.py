@@ -7,7 +7,13 @@ import threading
 from queue import Queue
 import speech_recognition as sr
 from commands import processar_comando, falar, checar_tarefas_atrasadas
-from memory import criar_usuario, autenticar_usuario, atualizar_senha_usuario, atualizar_username_usuario, verificar_usuario_existe
+from memory import (
+    criar_usuario, autenticar_usuario, atualizar_senha_usuario, 
+    atualizar_username_usuario, verificar_usuario_existe,
+    verificar_autenticacao_persistente, obter_ultimo_token_valido,
+    logout_usuario, invalidar_sessoes_usuario, listar_sessoes_ativas,
+    get_usuario_ativo, obter_usuario_por_username
+)
 
 class Colors:
     """Códigos ANSI para cores e estilos"""
@@ -103,6 +109,8 @@ def mostrar_comandos_slash():
         '/sair': 'Encerra o JARVIS',
         '/voz': 'Ativa o modo de comando por voz',
         '/texto': 'Volta ao modo de texto',
+        '/logout': 'Faz logout desta sessão',
+        '/sessoes': 'Mostra sessões ativas',
     }
     
     print(f"\n{Colors.BOLD}{Colors.PURPLE}📋 Comandos Disponíveis{Colors.RESET}\n")
@@ -190,113 +198,228 @@ def mostrar_comandos_jarvis():
     
     print(f"{Colors.GRAY}💡 Dica: Você também pode fazer perguntas naturais que o JARVIS entenderá!{Colors.RESET}\n")
 
-
 def mostrar_dicas():
     """Mostra dicas de uso"""
     print(f"{Colors.GRAY}╭─ Dicas para começar ───────────────────────────────────────╮{Colors.RESET}")
     print(f"{Colors.GRAY}│{Colors.RESET} {Colors.WHITE}1.{Colors.RESET} Pergunte qualquer coisa ou execute tarefas            {Colors.GRAY}│{Colors.RESET}")
     print(f"{Colors.GRAY}│{Colors.RESET} {Colors.WHITE}2.{Colors.RESET} Digite {Colors.PURPLE}/help{Colors.RESET} para informações com /           {Colors.GRAY}│{Colors.RESET}")
     print(f"{Colors.GRAY}│{Colors.RESET} {Colors.WHITE}3.{Colors.RESET} Digite {Colors.PURPLE}/comandos{Colors.RESET} para ver todos os comandos do JARVIS  {Colors.GRAY}│{Colors.RESET}")
+    print(f"{Colors.GRAY}│{Colors.RESET} {Colors.WHITE}4.{Colors.RESET} Digite {Colors.PURPLE}/sessoes{Colors.RESET} para ver suas sessões ativas  {Colors.GRAY}│{Colors.RESET}")
     print(f"{Colors.GRAY}╰────────────────────────────────────────────────────────────╯{Colors.RESET}")
     print()
 
-def autenticar_usuario_interativo():
-    limpar_tela()
-    mostrar_banner_principal()
+class SessionManager:
+    """Gerenciador de sessões do usuário"""
+    def __init__(self):
+        self.username = None
+        self.token = None
+        self.sessao_valida = False
     
-    print(f"{Colors.BOLD}{Colors.CYAN}🔐 AUTENTICAÇÃO{Colors.RESET}\n")
-    print(f"  {Colors.CYAN}1{Colors.RESET} {Colors.GRAY}→{Colors.RESET} Login")
-    print(f"  {Colors.CYAN}2{Colors.RESET} {Colors.GRAY}→{Colors.RESET} Criar Conta\n")
-    
-    escolha = input(f"{Colors.PURPLE}>{Colors.RESET} Escolha: ").strip()
-    print()
-
-    username = input(f"{Colors.PURPLE}>{Colors.RESET} Usuário: ").strip()
-    senha = getpass.getpass(f"{Colors.PURPLE}>{Colors.RESET} Senha: ").strip()
-
-    if escolha == "1":
-        mostrar_spinner("Autenticando")
-        if autenticar_usuario(username, senha):
-            limpar_tela()
-            mostrar_banner_principal()
-            print_box_message("Login Bem-sucedido", f"Bem-vindo(a) de volta, Senhor(a) {username}!", "success")
-            return username
-        else:
-            print_box_message("Erro de Autenticação", "Credenciais inválidas.", "error")
-            sys.exit(1)
-
-    elif escolha == "2":
-        confirm_senha = getpass.getpass(f"{Colors.PURPLE}>{Colors.RESET} Confirme a senha: ").strip()
-        if senha != confirm_senha:
-            print_box_message("Erro", "As senhas não coincidem.", "error")
-            sys.exit(1)
-        
-        mostrar_spinner("Criando conta")
-        resultado = criar_usuario(username, senha)
+    def verificar_sessao_existente(self):
+        """Verifica se já existe uma sessão válida no banco"""
         limpar_tela()
         mostrar_banner_principal()
-        print_box_message("Conta Criada", resultado, "success")
-        return username
-    else:
-        print_box_message("Erro", "Opção inválida.", "error")
-        sys.exit(1)
+        
+        print(f"{Colors.BOLD}{Colors.CYAN}🔍 VERIFICANDO SESSÕES ATIVAS{Colors.RESET}\n")
+        print(f"{Colors.GRAY}Procurando sessões válidas...{Colors.RESET}")
+        
+        mostrar_spinner("Verificando sessões", 1.0)
+        
+        # Listar todos os usuários com sessões ativas
+        usuarios_ativos = set()
+        sessoes_ativas = listar_sessoes_ativas()
+        
+        for sessao in sessoes_ativas:
+            usuarios_ativos.add(sessao['username'])
+        
+        if not usuarios_ativos:
+            print_box_message("Nenhuma Sessão", "Não há sessões ativas no momento.", "info")
+            return False
+        
+        print(f"\n{Colors.BOLD}{Colors.PURPLE}👥 USUÁRIOS COM SESSÕES ATIVAS{Colors.RESET}\n")
+        
+        usuarios_list = list(usuarios_ativos)
+        for i, user in enumerate(usuarios_list, 1):
+            print(f"  {Colors.CYAN}{i}.{Colors.RESET} {user}")
+        
+        print(f"\n  {Colors.CYAN}0.{Colors.RESET} {Colors.GRAY}→{Colors.RESET} Outro usuário")
+        print(f"  {Colors.CYAN}n.{Colors.RESET} {Colors.GRAY}→{Colors.RESET} Novo usuário")
+        
+        escolha = input(f"\n{Colors.PURPLE}>{Colors.RESET} Selecione usuário ou digite username: ").strip()
+        
+        if escolha.isdigit():
+            idx = int(escolha)
+            if idx == 0:
+                return False
+            if 1 <= idx <= len(usuarios_list):
+                username_selecionado = usuarios_list[idx - 1]
+            else:
+                print_box_message("Erro", "Opção inválida.", "error")
+                return False
+        elif escolha.lower() == 'n':
+            return False
+        else:
+            username_selecionado = escolha
+        
+        # Verificar se o usuário tem sessão válida
+        token = verificar_autenticacao_persistente(username_selecionado)
+        if token:
+            self.username = username_selecionado
+            self.token = token
+            self.sessao_valida = True
+            return True
+        
+        return False
+    
+    def login_interativo(self):
+        """Login interativo tradicional"""
+        limpar_tela()
+        mostrar_banner_principal()
+        
+        print(f"{Colors.BOLD}{Colors.CYAN}🔐 AUTENTICAÇÃO{Colors.RESET}\n")
+        print(f"  {Colors.CYAN}1{Colors.RESET} {Colors.GRAY}→{Colors.RESET} Login")
+        print(f"  {Colors.CYAN}2{Colors.RESET} {Colors.GRAY}→{Colors.RESET} Criar Conta\n")
+        
+        escolha = input(f"{Colors.PURPLE}>{Colors.RESET} Escolha: ").strip()
+        print()
 
-def alterar_senha(username_atual):
+        username = input(f"{Colors.PURPLE}>{Colors.RESET} Usuário: ").strip()
+        
+        if escolha == "1":
+            senha = getpass.getpass(f"{Colors.PURPLE}>{Colors.RESET} Senha: ").strip()
+            mostrar_spinner("Autenticando")
+            sucesso, token = autenticar_usuario(username, senha)
+            
+            if sucesso:
+                self.username = username
+                self.token = token
+                self.sessao_valida = True
+                limpar_tela()
+                mostrar_banner_principal()
+                print_box_message("Login Bem-sucedido", f"Bem-vindo(a) de volta, Senhor(a) {username}!", "success")
+                return True
+            else:
+                print_box_message("Erro de Autenticação", "Credenciais inválidas.", "error")
+                return False
+
+        elif escolha == "2":
+            senha = getpass.getpass(f"{Colors.PURPLE}>{Colors.RESET} Senha: ").strip()
+            confirm_senha = getpass.getpass(f"{Colors.PURPLE}>{Colors.RESET} Confirme a senha: ").strip()
+            
+            if senha != confirm_senha:
+                print_box_message("Erro", "As senhas não coincidem.", "error")
+                return False
+            
+            mostrar_spinner("Criando conta")
+            sucesso, token = criar_usuario(username, senha)
+            
+            if sucesso:
+                self.username = username
+                self.token = token
+                self.sessao_valida = True
+                limpar_tela()
+                mostrar_banner_principal()
+                print_box_message("Conta Criada", f"Conta criada com sucesso! Bem-vindo(a), Senhor(a) {username}!", "success")
+                return True
+            else:
+                print_box_message("Erro", "Falha ao criar conta. Usuário já existe?", "error")
+                return False
+        
+        else:
+            print_box_message("Erro", "Opção inválida.", "error")
+            return False
+    
+    def logout(self):
+        """Faz logout da sessão atual"""
+        if self.username and self.token:
+            logout_usuario(self.username, self.token)
+            self.sessao_valida = False
+            self.token = None
+            print_box_message("Logout", "Sessão encerrada com sucesso.", "success")
+    
+    def logout_todos(self):
+        """Faz logout de todas as sessões do usuário"""
+        if self.username:
+            invalidar_sessoes_usuario(self.username)
+            self.sessao_valida = False
+            self.token = None
+            print_box_message("Logout Total", "Todas as sessões foram encerradas.", "success")
+
+def alterar_senha(username_atual, token_atual):
     """Permite ao usuário alterar sua senha"""
     print(f"\n{Colors.BOLD}{Colors.PURPLE}🔑 ALTERAÇÃO DE SENHA{Colors.RESET}\n")
     
     nova_senha = getpass.getpass(f"{Colors.PURPLE}>{Colors.RESET} Nova senha: ").strip()
     if len(nova_senha) < 4:
         print_box_message("Erro", "A senha deve ter pelo menos 4 caracteres.", "error")
-        return False
+        return None, None
     
     confirmar_senha = getpass.getpass(f"{Colors.PURPLE}>{Colors.RESET} Confirme: ").strip()
     if nova_senha != confirmar_senha:
         print_box_message("Erro", "As senhas não coincidem.", "error")
-        return False
+        return None, None
     
     try:
         mostrar_spinner("Atualizando senha")
-        atualizar_senha_usuario(username_atual, nova_senha)
-        print_box_message("Sucesso", "Senha alterada com sucesso!", "success")
-        return True
+        sucesso, novo_token = atualizar_senha_usuario(username_atual, nova_senha, token_atual)
+        
+        if sucesso:
+            if novo_token:
+                print_box_message("Sucesso", "Senha alterada! Continua logado.", "success")
+                return username_atual, novo_token
+            else:
+                print_box_message("Sucesso", "Senha alterada! Faça login novamente.", "success")
+                return None, None
+        else:
+            print_box_message("Erro", "Falha ao alterar senha.", "error")
+            return None, None
     except Exception as e:
-        print_box_message("Erro", f"Falha ao alterar senha: {e}", "error")
-        return False
+        print_box_message("Erro", f"Erro: {e}", "error")
+        return None, None
 
-def alterar_username(username_atual):
+def alterar_username(username_atual, token_atual):
     """Permite ao usuário alterar seu username"""
     print(f"\n{Colors.BOLD}{Colors.PURPLE}👤 ALTERAÇÃO DE USERNAME{Colors.RESET}\n")
     
     senha_atual = getpass.getpass(f"{Colors.PURPLE}>{Colors.RESET} Senha atual: ").strip()
-    if not autenticar_usuario(username_atual, senha_atual):
+    sucesso, _ = autenticar_usuario(username_atual, senha_atual)
+    if not sucesso:
         print_box_message("Erro", "Senha incorreta.", "error")
-        return None
+        return None, None
     
     novo_username = input(f"{Colors.PURPLE}>{Colors.RESET} Novo username: ").strip()
     if len(novo_username) < 3:
         print_box_message("Erro", "O username deve ter pelo menos 3 caracteres.", "error")
-        return None
+        return None, None
     
     if verificar_usuario_existe(novo_username):
         print_box_message("Erro", "Este username já está em uso.", "error")
-        return None
+        return None, None
     
     confirmacao = input(f"{Colors.YELLOW}⚠{Colors.RESET}  Confirmar alteração de '{username_atual}' → '{novo_username}'? (s/n): ").strip().lower()
     if confirmacao not in ['s', 'sim', 'y', 'yes']:
         print_box_message("Cancelado", "Alteração cancelada.", "info")
-        return None
+        return None, None
     
     try:
         mostrar_spinner("Atualizando username")
-        atualizar_username_usuario(username_atual, novo_username)
-        print_box_message("Sucesso", f"Username alterado: {username_atual} → {novo_username}", "success")
-        return novo_username
+        sucesso, novo_token = atualizar_username_usuario(username_atual, novo_username, token_atual)
+        
+        if sucesso:
+            if novo_token:
+                print_box_message("Sucesso", f"Username alterado: {username_atual} → {novo_username}. Continua logado.", "success")
+                return novo_username, novo_token
+            else:
+                print_box_message("Sucesso", f"Username alterado: {username_atual} → {novo_username}. Faça login novamente.", "success")
+                return None, None
+        else:
+            print_box_message("Erro", "Falha ao alterar username.", "error")
+            return None, None
     except Exception as e:
-        print_box_message("Erro", f"Falha ao alterar username: {e}", "error")
-        return None
+        print_box_message("Erro", f"Erro: {e}", "error")
+        return None, None
 
-def menu_configuracoes_usuario(username_atual):
+def menu_configuracoes_usuario(username_atual, token_atual):
     """Menu de configurações de usuário"""
     while True:
         limpar_tela()
@@ -306,26 +429,73 @@ def menu_configuracoes_usuario(username_atual):
         print(f"{Colors.GRAY}Usuário atual: {Colors.CYAN}{username_atual}{Colors.RESET}\n")
         print(f"  {Colors.CYAN}1{Colors.RESET} {Colors.GRAY}→{Colors.RESET} Alterar senha")
         print(f"  {Colors.CYAN}2{Colors.RESET} {Colors.GRAY}→{Colors.RESET} Alterar username")
-        print(f"  {Colors.CYAN}3{Colors.RESET} {Colors.GRAY}→{Colors.RESET} Voltar ao menu principal\n")
+        print(f"  {Colors.CYAN}3{Colors.RESET} {Colors.GRAY}→{Colors.RESET} Ver sessões ativas")
+        print(f"  {Colors.CYAN}4{Colors.RESET} {Colors.GRAY}→{Colors.RESET} Fazer logout desta sessão")
+        print(f"  {Colors.CYAN}5{Colors.RESET} {Colors.GRAY}→{Colors.RESET} Fazer logout de todos os dispositivos")
+        print(f"  {Colors.CYAN}6{Colors.RESET} {Colors.GRAY}→{Colors.RESET} Voltar ao menu principal\n")
         
         escolha = input(f"{Colors.PURPLE}>{Colors.RESET} ").strip()
         
         if escolha == "1":
-            alterar_senha(username_atual)
+            novo_username, novo_token = alterar_senha(username_atual, token_atual)
+            if novo_username is None and novo_token is None:
+                # Senha alterada, mas precisa fazer login novamente
+                input(f"\n{Colors.GRAY}Pressione Enter para fazer login...{Colors.RESET}")
+                return None, None
+            elif novo_username and novo_token:
+                username_atual, token_atual = novo_username, novo_token
             input(f"\n{Colors.GRAY}Pressione Enter para continuar...{Colors.RESET}")
+            
         elif escolha == "2":
-            novo_username = alterar_username(username_atual)
-            if novo_username:
-                input(f"\n{Colors.GRAY}Pressione Enter para continuar...{Colors.RESET}")
-                return novo_username
+            novo_username, novo_token = alterar_username(username_atual, token_atual)
+            if novo_username is None and novo_token is None:
+                # Username alterado, mas precisa fazer login novamente
+                input(f"\n{Colors.GRAY}Pressione Enter para fazer login...{Colors.RESET}")
+                return None, None
+            elif novo_username and novo_token:
+                username_atual, token_atual = novo_username, novo_token
             input(f"\n{Colors.GRAY}Pressione Enter para continuar...{Colors.RESET}")
+            
         elif escolha == "3":
+            sessoes = listar_sessoes_ativas(username_atual)
+            print(f"\n{Colors.BOLD}{Colors.PURPLE}📊 SESSÕES ATIVAS PARA {username_atual}{Colors.RESET}\n")
+            if not sessoes:
+                print(f"{Colors.GRAY}  Nenhuma sessão ativa.{Colors.RESET}")
+            else:
+                for i, sessao in enumerate(sessoes, 1):
+                    print(f"  {Colors.CYAN}{i}.{Colors.RESET} Sessão {sessao['id'][:8]}...")
+                    print(f"     Criada: {sessao['created_at']}")
+                    print(f"     Expira: {sessao['expires_at']}")
+                    print()
+            input(f"\n{Colors.GRAY}Pressione Enter para continuar...{Colors.RESET}")
+            
+        elif escolha == "4":
+            from memory import logout_usuario
+            if logout_usuario(username_atual, token_atual):
+                print_box_message("Logout", "Esta sessão foi encerrada.", "info")
+                input(f"\n{Colors.GRAY}Pressione Enter para fazer login...{Colors.RESET}")
+                return None, None
+            else:
+                print_box_message("Erro", "Falha ao fazer logout.", "error")
+                input(f"\n{Colors.GRAY}Pressione Enter para continuar...{Colors.RESET}")
+                
+        elif escolha == "5":
+            from memory import invalidar_sessoes_usuario
+            if invalidar_sessoes_usuario(username_atual):
+                print_box_message("Logout Total", "Todas as sessões foram encerradas.", "info")
+                input(f"\n{Colors.GRAY}Pressione Enter para fazer login...{Colors.RESET}")
+                return None, None
+            else:
+                print_box_message("Erro", "Falha ao encerrar sessões.", "error")
+                input(f"\n{Colors.GRAY}Pressione Enter para continuar...{Colors.RESET}")
+                
+        elif escolha == "6":
             break
         else:
             print_box_message("Erro", "Opção inválida.", "error")
             time.sleep(1)
     
-    return username_atual
+    return username_atual, token_atual
 
 def modo_texto(username):
     """Modo de interação por texto com visual melhorado"""
@@ -386,6 +556,23 @@ def modo_texto(username):
                     
                 elif cmd_lower == "/texto":
                     print_box_message("Info", "Já está no modo texto.", "info")
+                    continue
+                    
+                elif cmd_lower == "/logout":
+                    print_box_message("Logout", "Use /config para fazer logout.", "info")
+                    continue
+                    
+                elif cmd_lower == "/sessoes":
+                    sessoes = listar_sessoes_ativas(username)
+                    print(f"\n{Colors.BOLD}{Colors.PURPLE}📊 SUAS SESSÕES ATIVAS{Colors.RESET}\n")
+                    if not sessoes:
+                        print(f"{Colors.GRAY}  Nenhuma sessão ativa.{Colors.RESET}")
+                    else:
+                        for i, sessao in enumerate(sessoes, 1):
+                            print(f"  {Colors.CYAN}{i}.{Colors.RESET} Sessão {sessao['id'][:8]}...")
+                            print(f"     Criada: {sessao['created_at']}")
+                            print(f"     Expira: {sessao['expires_at']}")
+                    print()
                     continue
                     
                 else:
@@ -505,11 +692,38 @@ def main():
     parser.add_argument('--user', type=str, help='Nome do usuário logado')
     args = parser.parse_args()
 
-    if args.user:
-        username = args.user
-        print_box_message("Login Automático", f"Usuário: {username}", "info")
+    # Gerenciador de sessões
+    session_manager = SessionManager()
+    
+    # Verificar se há sessão existente
+    if not args.user:
+        if session_manager.verificar_sessao_existente():
+            username = session_manager.username
+            token = session_manager.token
+            print_box_message("Sessão Restaurada", f"Bem-vindo(a) de volta, Senhor(a) {username}!", "success")
+        else:
+            # Login tradicional
+            if session_manager.login_interativo():
+                username = session_manager.username
+                token = session_manager.token
+            else:
+                sys.exit(1)
     else:
-        username = autenticar_usuario_interativo()
+        username = args.user
+        # Verificar se há sessão válida para este usuário
+        token = verificar_autenticacao_persistente(username)
+        if token:
+            session_manager.username = username
+            session_manager.token = token
+            session_manager.sessao_valida = True
+            print_box_message("Login Automático", f"Usuário: {username} (sessão restaurada)", "info")
+        else:
+            print_box_message("Sessão Expirada", f"Por favor, faça login novamente para {username}", "warning")
+            if session_manager.login_interativo():
+                username = session_manager.username
+                token = session_manager.token
+            else:
+                sys.exit(1)
 
     # Thread de notificações em background
     notificador_thread = threading.Thread(target=notificador_background, args=(username,), daemon=True)
@@ -520,8 +734,15 @@ def main():
         mostrar_banner_principal()
         
         print(f"{Colors.BOLD}{Colors.CYAN}📋 MENU PRINCIPAL{Colors.RESET}")
-        print(f"{Colors.GRAY}Usuário: {Colors.CYAN}{username}{Colors.RESET}\n")
-        print(f"  {Colors.CYAN}1{Colors.RESET} {Colors.GRAY}→{Colors.RESET} Modo voz")
+        print(f"{Colors.GRAY}Usuário: {Colors.CYAN}{username}{Colors.RESET}")
+        
+        # Mostrar informações da sessão
+        if token:
+            user_info = get_usuario_ativo(token)
+            if user_info:
+                print(f"{Colors.GRAY}Último login: {Colors.CYAN}{user_info.get('last_login', 'N/A')}{Colors.RESET}")
+        
+        print(f"\n  {Colors.CYAN}1{Colors.RESET} {Colors.GRAY}→{Colors.RESET} Modo voz")
         print(f"  {Colors.CYAN}2{Colors.RESET} {Colors.GRAY}→{Colors.RESET} Modo texto")
         print(f"  {Colors.CYAN}3{Colors.RESET} {Colors.GRAY}→{Colors.RESET} Configurações")
         print(f"  {Colors.CYAN}sair{Colors.RESET} {Colors.GRAY}→{Colors.RESET} Encerrar JARVIS\n")
@@ -538,18 +759,40 @@ def main():
             if resultado == "sair":
                 break
             elif resultado == "config":
-                novo_username = menu_configuracoes_usuario(username)
-                if novo_username != username:
+                novo_username, novo_token = menu_configuracoes_usuario(username, token)
+                if novo_username is None and novo_token is None:
+                    # Precisa fazer login novamente
+                    print_box_message("Sessão Encerrada", "Por favor, faça login novamente.", "info")
+                    if session_manager.login_interativo():
+                        username = session_manager.username
+                        token = session_manager.token
+                    else:
+                        break
+                elif novo_username and novo_token:
                     username = novo_username
+                    token = novo_token
+                    session_manager.username = username
+                    session_manager.token = token
             elif resultado == "voz":
                 resultado = modo_voz(username)
                 if resultado == "sair":
                     break
                     
         elif escolha == "3":
-            novo_username = menu_configuracoes_usuario(username)
-            if novo_username != username:
+            novo_username, novo_token = menu_configuracoes_usuario(username, token)
+            if novo_username is None and novo_token is None:
+                # Precisa fazer login novamente
+                print_box_message("Sessão Encerrada", "Por favor, faça login novamente.", "info")
+                if session_manager.login_interativo():
+                    username = session_manager.username
+                    token = session_manager.token
+                else:
+                    break
+            elif novo_username and novo_token:
                 username = novo_username
+                token = novo_token
+                session_manager.username = username
+                session_manager.token = token
                 
         elif escolha == "sair":
             print_box_message("Encerrando", "JARVIS desativado. Até logo!", "info")

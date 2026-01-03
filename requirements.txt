@@ -25,4 +25,7 @@ winapps
 pywhatkit
 smtplib
 getpass
-plyer
+plyer 
+python-jose[cryptography] 
+passlib[bcrypt]
+python-multipart
