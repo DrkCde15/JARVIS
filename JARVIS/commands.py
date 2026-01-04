@@ -14,8 +14,9 @@ from bs4 import BeautifulSoup
 import yt_dlp # type: ignore
 import time
 from datetime import datetime
+from langchain_google_genai import ChatGoogleGenerativeAI  # type: ignore
+from langchain_core.messages import HumanMessage
 import pandas as pd
-import google.generativeai as genai
 from PIL import Image
 from memory import limpar_memoria_do_usuario, responder_com_gemini, registrar_log, obter_senha_smtp,salvar_senha_smtp
 import fitz
@@ -26,15 +27,15 @@ import threading
 from queue import Queue
 from typing import Callable
 import warnings
-import pywhatkit as kit
+import pywhatkit as kit # type: ignore
 import smtplib
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 from email.mime.base import MIMEBase
 from email import encoders
 from getpass import getpass
-import winapps
-from plyer import notification  # Biblioteca para notificações
+import winapps # type: ignore
+from plyer import notification  # type: ignore
 
 warnings.filterwarnings('ignore')
 if "USER_AGENT" not in os.environ:
@@ -835,21 +836,27 @@ def parar_gravacao_sistema(username=None):
 # ========== Funções de imagens ==========
 class ImageAnalyser:
     def __init__(self):
-        self.model = genai.GenerativeModel("gemini-1.0")
+        self.llm = ChatGoogleGenerativeAI(
+            model="gemini-1.5-pro",
+            temperature=0.4
+        )
 
     def _run(self, image_path: str, username: str) -> str:
         try:
             if not os.path.exists(image_path):
                 return f"Caminho inválido: {image_path}"
-            
+
             image = Image.open(image_path).convert("RGB")
 
-            response = self.model.generate_content([
-                "Descreva com detalhes tudo o que está visível nesta imagem.",
-                image
-            ])
+            mensagem = HumanMessage(
+                content=[
+                    {"type": "text", "text": "Descreva com detalhes tudo o que está visível nesta imagem."},
+                    {"type": "image", "image": image},
+                ]
+            )
 
-            resposta_texto = response.text.strip()
+            response = self.llm.invoke([mensagem])
+            resposta_texto = response.content.strip()
 
             registrar_log(username, f"Análise de imagem: {image_path}")
             registrar_log(username, f"Resultado: {resposta_texto}")
@@ -862,14 +869,11 @@ class ImageAnalyser:
 def analisar_imagem_comando(caminho, username, modo='texto'):
     if not os.path.exists(caminho):
         return f"Caminho inválido: {caminho}"
-    
     analyser = ImageAnalyser()
     resultado = analyser._run(caminho, username)
-
     if modo == 'voz':
         falar(resultado)
     return resultado
-
 # ========== Funções de agenda ==========
 
 AGENDA_DIR = Path.home() / "Documents" / "Agenda"
@@ -1995,35 +1999,32 @@ def processar_comando(comando: str, username: str, modo: str = "texto"):
     if not comando:
         return "Nenhum comando recebido, senhor."
 
-    # 1️⃣ BUSCA DIRETA NOS PADRÕES
+    # BUSCA DIRETA NOS PADRÕES
     for padrao, acao in padroes:
         match = padrao.search(comando)
         if not match:
             continue
 
         try:
-            # 🔹 Ação pode ou não usar regex groups
+            # Ação pode ou não usar regex groups
             resultado = acao(match, username)
 
-            # 🔹 Gemini às vezes retorna objeto
+            # Gemini às vezes retorna objeto
             if hasattr(resultado, "content"):
                 resultado = resultado.content
 
             if not resultado:
                 resultado = "Comando executado, senhor."
-
             if modo == "voz":
                 falar(resultado)
-
             return resultado
-
         except Exception as e:
             erro = f"Erro ao executar comando: {e}"
             if modo == "voz":
                 falar(erro)
             return erro
 
-    # 2️⃣ FALLBACK PARA GEMINI (ÚLTIMO RECURSO)
+    # FALLBACK PARA GEMINI
     try:
         resposta = responder_com_gemini(comando, username)
 

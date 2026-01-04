@@ -19,7 +19,7 @@ Seja para abrir aplicativos, analisar arquivos, criar códigos, instalar program
 ✅ **Envio de E-mails automatizado** – Envie emails de forma automática.  
 ✅ **Abrir Sites, Apps e Pastas** – Apenas diga ou digite o comando("abrir pasta documentos", "abrir netflix").  
 ✅ **Gerenciamento de Agenda (Excel)** – Criar, listar e adicionar tarefas.  
-✅ **Leitura e Análise de Arquivos** – PDF, DOCX, PPTX, XLSX e mais.  
+✅ **Análise de Arquivos** – PDF, DOCX, PPTX, XLSX e mais.  
 ✅ **Criação Automática de Código** – Informe a linguagem e a descrição(py, java, js, php, c, html).   
 ✅ **Memória Contextual** – Mantém o contexto durante a sessão.  
 ✅ **Análise de Imagens** – Analise de imagens com integração do Gemini.  
