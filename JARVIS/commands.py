@@ -1877,116 +1877,118 @@ def responder_com_gemini_fallback(match, username):
 # ========== Lista de comandos ==========
 padroes = [
     # E-mail
-    (re.compile(r'\benviar\s+(?:um\s+)?e-?mail\b', re.IGNORECASE), 
+    (re.compile(r'\/(?:enviar\s+)?e-?mail\b', re.IGNORECASE), 
      enviar_email),
     
     # Aplicativos
-    (re.compile(r'\blistar\s+(?:os\s+)?(?:apps|aplicativos)\s+instalados\b', re.IGNORECASE), 
+    (re.compile(r'\/listar\s+(?:apps|aplicativos)\b', re.IGNORECASE), 
      listar_aplicativos_winapps),
     
-    (re.compile(r'\binforma[çc][õo]es?\s+(?:do\s+)?(?:app|aplicativo)\s+(.+)', re.IGNORECASE), 
+    (re.compile(r'\/info\s+(?:app|aplicativo)\s+(.+)', re.IGNORECASE), 
      lambda m, u: info_aplicativo_winapps(m.group(1).strip(), u)),
     
-    (re.compile(r'\bdesinstalar\s+(?:app|aplicativo)\s+(.+)', re.IGNORECASE), 
+    (re.compile(r'\/desinstalar\s+(?:app|aplicativo)\s+(.+)', re.IGNORECASE), 
      lambda m, u: desinstalar_app_winapps(m.group(1).strip(), u)),
 
     # WhatsApp
-    (re.compile(r'\benviar\s+(?:uma\s+)?(?:mensagem\s+)?(?:para\s+o?\s+)?(?:um\s+)?grupo\b', re.IGNORECASE), 
+    (re.compile(r'\/(?:enviar\s+)?whatsapp\s+grupo\b', re.IGNORECASE), 
      enviar_whatsapp_grupo),
     
-    (re.compile(r'\benviar\s+(?:uma\s+)?(?:mensagem\s+)?(?:agendad[ao]|programad[ao])?\b', re.IGNORECASE), 
+    (re.compile(r'\/(?:enviar\s+)?whatsapp\s+agendado\b', re.IGNORECASE), 
     enviar_whatsapp_agendado),
 
-    (re.compile(r'\benviar\s+(?:uma\s+)?mensagem\b', re.IGNORECASE), 
+    (re.compile(r'\/(?:enviar\s+)?whatsapp\b', re.IGNORECASE), 
     enviar_whatsapp),
     
     # YouTube e Pesquisa
-    (re.compile(r'\btocar\s+(?:m[úu]sica|v[íi]deo)\s+(?:no\s+)?youtube\b', re.IGNORECASE), 
+    (re.compile(r'\/tocar\s+(?:no\s+)?youtube\b', re.IGNORECASE), 
      tocar_musica_pywhatkit),
     
-    (re.compile(r'\b(?:pesquisar|buscar|procurar|pesquise|busque|procure)\s+(?:por\s+)?(.+?)\s+(?:no\s+)?google$', re.IGNORECASE), 
+    (re.compile(r'\/pesquisar\s+(.+?)(?:\s+no\s+google)?$', re.IGNORECASE), 
      pesquisar_google_pywhatkit),
     
     # Sites
-    (re.compile(r'\b(listar|mostrar|exibir)\s+(os\s+)?sites\b', re.IGNORECASE), listar_sites),
+    (re.compile(r'\/listar\s+sites\b', re.IGNORECASE), listar_sites),
     
     # Análises
-    (re.compile(r'\banalisar\s+arquivo\s+(.+)', re.IGNORECASE), lambda m, u: analisar_arquivos(m, u)),
+    (re.compile(r'\/analisar\s+arquivo\s+(.+)', re.IGNORECASE), 
+     lambda m, u: analisar_arquivos(m, u)),
     
-    (re.compile(r'\banalisar\s+site\s+(.+)', re.IGNORECASE), lambda m, u: analisar_site(m.group(1).strip(), u)),
+    (re.compile(r'\/analisar\s+site\s+(.+)', re.IGNORECASE), 
+     lambda m, u: analisar_site(m.group(1).strip(), u)),
     
     # Instalação/Desinstalação
-    (re.compile(r"\b(?:instalar|instale|quero instalar)\s+([a-zA-Z0-9\-\.]+)", re.IGNORECASE), 
+    (re.compile(r"\/instalar\s+([a-zA-Z0-9\-\.]+)", re.IGNORECASE), 
      lambda m, u: instalar_programa_via_cmd_admin(m.group(1), u)),
     
-    (re.compile(r"\b(?:desinstalar|remover|apagar)\s+([a-zA-Z0-9\-\.]+)", re.IGNORECASE), 
+    (re.compile(r"\/desinstalar\s+([a-zA-Z0-9\-\.]+)", re.IGNORECASE), 
      lambda m, u: desinstalar_programa(m.group(1), u, 'texto')),
     
     # Download YouTube
-    (re.compile(r"\b(baixar|fazer download de|salvar)\b.*?\b(vídeo|video)\b.*?(https?://[^\s]+)", re.IGNORECASE), 
-     lambda m, u: baixar_video_youtube(m.group(3), u)),
+    (re.compile(r"\/baixar\s+video\s+(https?://[^\s]+)", re.IGNORECASE), 
+     lambda m, u: baixar_video_youtube(m.group(1), u)),
     
-    (re.compile(r"\b(baixar|fazer download de|salvar)\b.*?\b(áudio|audio|som|mp3|musica|música)\b.*?(https?://[^\s]+)", re.IGNORECASE), 
-     lambda m, u: baixar_audio_youtube(m.group(3), u)),
+    (re.compile(r"\/baixar\s+audio\s+(https?://[^\s]+)", re.IGNORECASE), 
+     lambda m, u: baixar_audio_youtube(m.group(1), u)),
     
     # Gravação de tela
-    (re.compile(r'\b(gravar|iniciar)\s+(?:vídeo|video|gravação|gravacao|tela)\b', re.IGNORECASE), 
+    (re.compile(r'\/gravar\s+tela\b', re.IGNORECASE), 
      lambda m, u: iniciar_gravacao_sistema()),
     
-    (re.compile(r'\b(parar|finalizar)\s+(?:vídeo|video|gravação|gravacao|tela)\b', re.IGNORECASE), 
+    (re.compile(r'\/parar\s+gravacao\b', re.IGNORECASE), 
      lambda m, u: parar_gravacao_sistema()),
     
     # Pastas
-    (re.compile(r'\babrir\s+(?:pasta\s+)?(.+)', re.IGNORECASE), abrir_pasta),
+    (re.compile(r'\/abrir\s+pasta\s+(.+)', re.IGNORECASE), abrir_pasta),
     
     # Abrir sites
-    (re.compile(r'\b(iniciar|abrir|executar)\s+(youtube|netflix|microsoft teams|github|instagram|tik\s*tok|tiktok|e-?mail|email|whatsapp|google met|calendario|meet|drive|google drive)\b', re.IGNORECASE), 
+    (re.compile(r'\/abrir\s+(youtube|netflix|microsoft teams|github|instagram|tik\s*tok|tiktok|e-?mail|email|whatsapp|google met|calendario|meet|drive|google drive)\b', re.IGNORECASE), 
      abrir_site),
     
     # Abrir aplicativos
-    (re.compile(r'\b(executar|abrir|iniciar)\s+(.+)', re.IGNORECASE), 
+    (re.compile(r'\/abrir\s+(.+)', re.IGNORECASE), 
      abrir_aplicativo_winapps),
     
     # Análise de imagem
-    (re.compile(r'\banalisar\s+imagem\s+(.+)', re.IGNORECASE), 
+    (re.compile(r'\/analisar\s+imagem\s+(.+)', re.IGNORECASE), 
      lambda m, u: analisar_imagem_comando(m.group(1).strip(), u)),
     
      # Agenda
-    (re.compile(r'\b(?:ler|ver|mostrar|listar)\s+agenda\b', re.IGNORECASE), 
+    (re.compile(r'\/(?:ler|ver)\s+agenda\b', re.IGNORECASE), 
     lambda m, u, modo='texto': listar_agenda(u, modo)),
-    (re.compile(r'\bagenda\s+hoje\b', re.IGNORECASE), 
+    (re.compile(r'\/agenda\s+hoje\b', re.IGNORECASE), 
     lambda m, u, modo='texto': agenda_hoje(u, modo)),
-    (re.compile(r'\badicionar\s+tarefa$', re.IGNORECASE), 
+    (re.compile(r'\/adicionar\s+tarefa$', re.IGNORECASE), 
     lambda m, u, modo='texto': adicionar_tarefa_interativa(m, u, modo)),
-    (re.compile(r'\bmarcar\s+(?:como\s+)?(?:feita|conclu[íi]da|finalizada)\s+(.+)', re.IGNORECASE), 
+    (re.compile(r'\/marcar\s+(?:como\s+)?concluida\s+(.+)', re.IGNORECASE), 
     lambda m, u, modo='texto': marcar_como_concluida_comando(m, u, modo)),
-    (re.compile(r'\b(?:deletar|excluir)\s+tarefa\s+(.+)', re.IGNORECASE), 
+    (re.compile(r'\/remover\s+tarefa\s+(.+)', re.IGNORECASE), 
     lambda m, u, modo='texto': remover_tarefa_comando(m, u, modo)),
-    (re.compile(r'\blimpar\s+agenda\b', re.IGNORECASE), 
+    (re.compile(r'\/limpar\s+agenda\b', re.IGNORECASE), 
     lambda m, u, modo='texto': limpar_agenda_completa(u, modo)),
-    (re.compile(r'\beditar\s+tarefa\b', re.IGNORECASE), 
+    (re.compile(r'\/editar\s+tarefa\b', re.IGNORECASE), 
     lambda m, u, modo='texto': editar_tarefa(m, u, modo)),
-    (re.compile(r'\bchecar\s+(?:tarefas\s+)?atrasadas\b', re.IGNORECASE), 
+    (re.compile(r'\/tarefas\s+atrasadas\b', re.IGNORECASE), 
     lambda m, u, modo='texto': checar_tarefas_atrasadas(u, modo)),
-    (re.compile(r'\binicializar\s+agenda\b', re.IGNORECASE), 
+    (re.compile(r'\/inicializar\s+agenda\b', re.IGNORECASE), 
     lambda m, u, modo='texto': inicializar_sistema_agenda(u)),
     
     # Sistema
-    (re.compile(r'\bverificar\s+atualiza[çc][õo]es\b', re.IGNORECASE), verificar_atualizacoes),
-    (re.compile(r'\batualizar\s+sistema\b', re.IGNORECASE), atualizar_sistema),
-    (re.compile(r'\blimpar\s+lixo\b', re.IGNORECASE), limpar_lixo),
+    (re.compile(r'\/verificar\s+atualizacoes\b', re.IGNORECASE), verificar_atualizacoes),
+    (re.compile(r'\/atualizar\s+sistema\b', re.IGNORECASE), atualizar_sistema),
+    (re.compile(r'\/limpar\s+lixo\b', re.IGNORECASE), limpar_lixo),
     
     # Data e hora
-    (re.compile(r'\bque\s+horas?\s+s[ãa]o\b', re.IGNORECASE), falar_hora),
-    (re.compile(r'\bque\s+dia\s+[ée]\s+hoje\b', re.IGNORECASE), falar_data),
+    (re.compile(r'\/horas?\b', re.IGNORECASE), falar_hora),
+    (re.compile(r'\/data\b', re.IGNORECASE), falar_data),
     
     # Arquivos
-    (re.compile(r'\blistar\s+arquivos(?:\s+\.(\w+))?(?:\s+em\s+(.+))?', re.IGNORECASE), listar_arquivos),
-    (re.compile(r'\bcriar\s+(?:arquivo\s+)?de\s+texto\b', re.IGNORECASE), criar_arquivo),
-    (re.compile(r'\bcriar\s+(?:c[óo]digo|programa)\b', re.IGNORECASE), criar_codigo),
+    (re.compile(r'\/listar\s+arquivos(?:\s+\.(\w+))?(?:\s+em\s+(.+))?', re.IGNORECASE), listar_arquivos),
+    (re.compile(r'\/criar\s+(?:arquivo\s+)?texto\b', re.IGNORECASE), criar_arquivo),
+    (re.compile(r'\/criar\s+codigo\b', re.IGNORECASE), criar_codigo),
     
     # Memória
-    (re.compile(r'\blimpar\s+mem[óo]ria\b', re.IGNORECASE), limpar_memoria_do_usuario_command),
+    (re.compile(r'\/limpar\s+memoria\b', re.IGNORECASE), limpar_memoria_do_usuario_command)
 ]
 
 # Variável global para modo
