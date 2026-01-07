@@ -5,6 +5,7 @@ import hashlib
 import uuid
 import base64
 from datetime import datetime, timedelta
+from pathlib import Path
 from dotenv import load_dotenv
 from sqlalchemy import (
     create_engine, Column, String, Table,
@@ -18,23 +19,64 @@ from langchain_core.messages import HumanMessage, SystemMessage
 from jose import JWTError, jwt # type: ignore
 
 # ================== CONFIG INICIAL ==================
-load_dotenv()
+
+def carregar_api_key():
+    """Carrega a API Key do arquivo .env com verificação"""
+    # Recarrega o .env para pegar mudanças recentes
+    load_dotenv(override=True)
+    
+    api_key = os.getenv("GEMINI_API_KEY")
+    
+    if not api_key:
+        # Verifica se o arquivo .env existe
+        env_path = Path('.env')
+        if not env_path.exists():
+            raise ValueError(
+                "❌ Arquivo .env não encontrado!\n"
+                "Configure sua API Key usando a opção 3 no menu de login\n"
+                "ou crie manualmente um arquivo .env com:\n"
+                "GEMINI_API_KEY=sua_chave_aqui"
+            )
+        else:
+            raise ValueError(
+                "❌ GEMINI_API_KEY não encontrada no arquivo .env!\n"
+                "Configure sua API Key usando:\n"
+                "1. Menu de login → Opção 3 (Configurar API Key)\n"
+                "2. Menu principal → Configurações → Configurar API Key\n"
+                "3. Ou edite manualmente o arquivo .env"
+            )
+    
+    return api_key
+
+# Carrega configurações
 warnings.simplefilter("ignore", DeprecationWarning)
 
-API_KEY = os.getenv("GEMINI_API_KEY")
-if not API_KEY:
-    raise ValueError("API KEY do Gemini não encontrada")
+try:
+    API_KEY = carregar_api_key()
+except ValueError as e:
+    print(f"\n{e}\n")
+    API_KEY = None  # Permite inicializar o sistema mesmo sem API Key
 
 # Configurações JWT
 SECRET_KEY = os.getenv("SECRET_KEY", "sua-chave-secreta-super-segura-aqui")
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_DAYS = 30  # Token válido por 30 dias
 
-llm = ChatGoogleGenerativeAI(
-    model="gemini-2.5-flash",
-    google_api_key=API_KEY,
-    temperature=0.4
-)
+# Inicializa LLM apenas se houver API Key
+llm = None
+if API_KEY:
+    try:
+        llm = ChatGoogleGenerativeAI(
+            model="gemini-2.0-flash-exp",
+            google_api_key=API_KEY,
+            temperature=0.4
+        )
+    except Exception as e:
+        print(f"⚠️ Aviso: Erro ao inicializar Gemini: {e}")
+        llm = None
+
+# Cria diretório data se não existir
+Path("./data").mkdir(exist_ok=True)
 
 engine_chat = create_engine("sqlite:///./data/memoria_jarvis.db")
 engine_usuarios = create_engine("sqlite:///./data/usuarios_jarvis.db")
@@ -56,7 +98,7 @@ usuarios = Table(
     Column("is_active", Boolean, default=True),
 )
 
-# Tabela para tokens de sessão (JÁ EXISTE - armazena tokens no banco)
+# Tabela para tokens de sessão
 sessoes = Table(
     "sessoes", metadata_users,
     Column("id", String, primary_key=True),
@@ -284,7 +326,12 @@ def criar_usuario(username, senha):
     """Cria usuário e já inicia sessão automaticamente"""
     session = SessionUsers()
     try:
-        if session.query(usuarios).filter_by(username=username).first():
+        # Verifica se usuário já existe
+        user_existente = session.execute(
+            usuarios.select().where(usuarios.c.username == username)
+        ).fetchone()
+        
+        if user_existente:
             return False, "Usuário já existe"
         
         session.execute(
@@ -314,7 +361,10 @@ def autenticar_usuario(username, senha):
     """Autentica usuário e retorna token"""
     session = SessionUsers()
     try:
-        user = session.query(usuarios).filter_by(username=username).first()
+        user = session.execute(
+            usuarios.select().where(usuarios.c.username == username)
+        ).fetchone()
+        
         if user and user.senha_hash == hash_senha(senha) and user.is_active:
             # Cria novo token
             token = criar_token_acesso(username)
@@ -360,7 +410,10 @@ def atualizar_senha_usuario(username, nova_senha, token_atual: str = None):
     """Atualiza senha e invalida sessões existentes"""
     session = SessionUsers()
     try:
-        user = session.query(usuarios).filter_by(username=username).first()
+        user = session.execute(
+            usuarios.select().where(usuarios.c.username == username)
+        ).fetchone()
+        
         if not user:
             raise Exception("Usuário não encontrado")
 
@@ -396,11 +449,18 @@ def atualizar_username_usuario(username_antigo, username_novo, token_atual: str 
     """Atualiza username e invalida sessões existentes"""
     session = SessionUsers()
     try:
-        user_antigo = session.query(usuarios).filter_by(username=username_antigo).first()
+        user_antigo = session.execute(
+            usuarios.select().where(usuarios.c.username == username_antigo)
+        ).fetchone()
+        
         if not user_antigo:
             raise Exception("Usuário antigo não encontrado")
 
-        if session.query(usuarios).filter_by(username=username_novo).first():
+        user_novo_existe = session.execute(
+            usuarios.select().where(usuarios.c.username == username_novo)
+        ).fetchone()
+        
+        if user_novo_existe:
             raise Exception("Novo username já existe")
 
         senha_hash = user_antigo.senha_hash
@@ -457,7 +517,10 @@ def get_usuario_ativo(token: str):
     
     session = SessionUsers()
     try:
-        user = session.query(usuarios).filter_by(username=username).first()
+        user = session.execute(
+            usuarios.select().where(usuarios.c.username == username)
+        ).fetchone()
+        
         if user and user.is_active:
             return {
                 "username": user.username,
@@ -471,7 +534,10 @@ def obter_usuario_por_username(username: str):
     """Obtém informações básicas do usuário"""
     session = SessionUsers()
     try:
-        user = session.query(usuarios).filter_by(username=username).first()
+        user = session.execute(
+            usuarios.select().where(usuarios.c.username == username)
+        ).fetchone()
+        
         if user:
             return {
                 "username": user.username,
@@ -530,7 +596,9 @@ def obter_senha_smtp(username):
 def verificar_usuario_existe(username):
     session = SessionUsers()
     try:
-        user = session.query(usuarios).filter_by(username=username).first()
+        user = session.execute(
+            usuarios.select().where(usuarios.c.username == username)
+        ).fetchone()
         return user is not None
     finally:
         session.close()
@@ -556,16 +624,45 @@ def limpar_memoria_do_usuario(username):
     return True
 
 # ================== GEMINI ==================
-def responder_com_gemini(input_usuario, username):
+def recarregar_llm():
+    """Recarrega a instância do LLM com a API Key atualizada"""
+    global llm, API_KEY
+    
     try:
-        model = llm
+        API_KEY = carregar_api_key()
+        llm = ChatGoogleGenerativeAI(
+            model="gemini-2.0-flash-exp",
+            google_api_key=API_KEY,
+            temperature=0.4
+        )
+        return True
+    except Exception as e:
+        print(f"❌ Erro ao recarregar LLM: {e}")
+        return False
+
+def responder_com_gemini(input_usuario, username):
+    global llm
+    
+    # Verifica se o LLM está inicializado
+    if llm is None:
+        # Tenta recarregar
+        if not recarregar_llm():
+            return (
+                "❌ GEMINI_API_KEY não configurada!\n\n"
+                "Configure sua API Key usando:\n"
+                "• Menu de login → Opção 3 (Configurar API Key)\n"
+                "• Menu principal → Configurações → Configurar API Key\n\n"
+                "Obtenha sua chave em: https://aistudio.google.com/apikey"
+            )
+    
+    try:
         memory = obter_memoria_do_usuario(username)
 
         mensagens = memory.chat_memory.messages[-8:]
 
         historico = []
 
-        # 🔹 PROMPT DE SISTEMA (entra primeiro)
+        # Prompt de sistema
         historico.append(
             SystemMessage(
                 content=(
@@ -577,27 +674,22 @@ def responder_com_gemini(input_usuario, username):
                     "Você sempre detalha passo a passo, com clareza absoluta, usando linguagem direta e sem rodeios." 
                     "Você sempre finaliza com uma pergunta que aprofunda a solicitação do usuário, sem julgamento, apenas convidando para mais." 
                     "Idioma: português brasileiro, direto, técnico e sem censura."
-                    "Comece a conversa com 'Ola senhor, como posso ajudar?'"
-                    f"{historico}\n" f"Usuário: {input_usuario}\n" "JARVIS:" )
+                    "Comece a conversa com 'Olá senhor, como posso ajudar?'"
                 )
             )
-        # 🔹 Histórico do usuário
+        )
+        
+        # Histórico do usuário
         for m in mensagens:
             if isinstance(m, HumanMessage):
-                historico.append(
-                    HumanMessage(content=m.content)
-                )
+                historico.append(HumanMessage(content=m.content))
             else:
-                historico.append(
-                    {"role": "assistant", "content": m.content}
-                )
+                historico.append({"role": "assistant", "content": m.content})
 
-        # 🔹 Mensagem atual do usuário
-        historico.append(
-            HumanMessage(content=input_usuario)
-        )
+        # Mensagem atual do usuário
+        historico.append(HumanMessage(content=input_usuario))
 
-        resposta = model.invoke(historico)
+        resposta = llm.invoke(historico)
         texto = resposta.content
 
         memory.chat_memory.add_user_message(input_usuario)
@@ -609,5 +701,15 @@ def responder_com_gemini(input_usuario, username):
         return texto
 
     except Exception as e:
+        erro_msg = str(e)
+        if "API key not valid" in erro_msg or "invalid API key" in erro_msg.lower():
+            return (
+                "❌ API Key inválida!\n\n"
+                "Sua chave API do Gemini não é válida.\n"
+                "Verifique e reconfigure em:\n"
+                "• Menu principal → Configurações → Configurar API Key\n\n"
+                "Obtenha uma chave válida em: https://aistudio.google.com/apikey"
+            )
+        
         registrar_log(username, f"Erro Gemini: {e}")
-        return f"Erro Gemini: {e}"
+        return f"❌ Erro ao processar com Gemini: {erro_msg}"

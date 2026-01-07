@@ -5,6 +5,7 @@ import getpass
 import time
 import threading
 from queue import Queue
+from pathlib import Path
 import speech_recognition as sr
 from commands import processar_comando, falar, checar_tarefas_atrasadas
 from memory import (
@@ -97,6 +98,62 @@ def print_box_message(titulo: str, mensagem: str, tipo: str = "info"):
     print(f"\n{color}{icon}{Colors.RESET} {Colors.BOLD}{titulo}{Colors.RESET}")
     print(f"{Colors.GRAY}│{Colors.RESET} {mensagem}")
     print()
+
+def criar_env_com_api_key(api_key):
+    """Cria ou atualiza o arquivo .env com a chave API"""
+    env_path = Path('.env')
+    
+    # Ler conteúdo existente do .env se existir
+    env_content = {}
+    if env_path.exists():
+        with open(env_path, 'r') as f:
+            for line in f:
+                line = line.strip()
+                if line and not line.startswith('#') and '=' in line:
+                    key, value = line.split('=', 1)
+                    env_content[key.strip()] = value.strip()
+    
+    # Atualizar ou adicionar a chave API
+    env_content['GEMINI_API_KEY'] = api_key
+    
+    # Escrever de volta no arquivo
+    with open(env_path, 'w') as f:
+        f.write("# Arquivo de configuração JARVIS\n")
+        for key, value in env_content.items():
+            f.write(f"{key}={value}\n")
+    
+    return True
+
+def configurar_api_key():
+    """Opção para configurar a chave API"""
+    limpar_tela()
+    mostrar_banner_principal()
+    print(f"\n{Colors.BOLD}{Colors.YELLOW}🔑 CONFIGURAÇÃO DA API GEMINI{Colors.RESET}\n")
+    
+    print(f"{Colors.GRAY}Para obter sua chave API do Gemini:{Colors.RESET}")
+    print(f"{Colors.CYAN}1.{Colors.RESET} Acesse: {Colors.PURPLE}https://aistudio.google.com/apikey{Colors.RESET}")
+    print(f"{Colors.CYAN}2.{Colors.RESET} Faça login com sua conta Google")
+    print(f"{Colors.CYAN}3.{Colors.RESET} Clique em 'Create API Key'\n")
+    
+    api_key = input(f"{Colors.PURPLE}>{Colors.RESET} Digite sua chave API do Gemini: ").strip()
+    
+    if not api_key:
+        print_box_message("Erro", "Chave API não pode estar vazia!", "error")
+        input(f"\n{Colors.GRAY}Pressione ENTER para continuar...{Colors.RESET}")
+        return
+    
+    mostrar_spinner("Salvando configuração", 1.0)
+    
+    if criar_env_com_api_key(api_key):
+        print_box_message("Sucesso", "Chave API configurada com sucesso!", "success")
+        print(f"{Colors.GRAY}Arquivo .env criado/atualizado com GEMINI_API_KEY{Colors.RESET}")
+        
+        # Atualizar variável de ambiente na sessão atual
+        os.environ['GEMINI_API_KEY'] = api_key
+    else:
+        print_box_message("Erro", "Erro ao salvar a chave API!", "error")
+    
+    input(f"\n{Colors.GRAY}Pressione ENTER para continuar...{Colors.RESET}")
 
 def mostrar_comandos_slash():
     """Mostra os comandos disponíveis com /"""
@@ -278,10 +335,15 @@ class SessionManager:
         
         print(f"{Colors.BOLD}{Colors.CYAN}🔐 AUTENTICAÇÃO{Colors.RESET}\n")
         print(f"  {Colors.CYAN}1{Colors.RESET} {Colors.GRAY}→{Colors.RESET} Login")
-        print(f"  {Colors.CYAN}2{Colors.RESET} {Colors.GRAY}→{Colors.RESET} Criar Conta\n")
+        print(f"  {Colors.CYAN}2{Colors.RESET} {Colors.GRAY}→{Colors.RESET} Criar Conta")
+        print(f"  {Colors.CYAN}3{Colors.RESET} {Colors.GRAY}→{Colors.RESET} Configurar API Key\n")
         
         escolha = input(f"{Colors.PURPLE}>{Colors.RESET} Escolha: ").strip()
         print()
+
+        if escolha == "3":
+            configurar_api_key()
+            return False
 
         username = input(f"{Colors.PURPLE}>{Colors.RESET} Usuário: ").strip()
         
@@ -429,7 +491,8 @@ def menu_configuracoes_usuario(username_atual, token_atual):
         print(f"{Colors.GRAY}Usuário atual: {Colors.CYAN}{username_atual}{Colors.RESET}\n")
         print(f"  {Colors.CYAN}1{Colors.RESET} {Colors.GRAY}→{Colors.RESET} Alterar senha")
         print(f"  {Colors.CYAN}2{Colors.RESET} {Colors.GRAY}→{Colors.RESET} Alterar username")
-        print(f"  {Colors.CYAN}3{Colors.RESET} {Colors.GRAY}→{Colors.RESET} Voltar ao menu principal\n")
+        print(f"  {Colors.CYAN}3{Colors.RESET} {Colors.GRAY}→{Colors.RESET} Configurar API Key")
+        print(f"  {Colors.CYAN}4{Colors.RESET} {Colors.GRAY}→{Colors.RESET} Voltar ao menu principal\n")
         
         escolha = input(f"{Colors.PURPLE}>{Colors.RESET} ").strip()
         
@@ -452,7 +515,11 @@ def menu_configuracoes_usuario(username_atual, token_atual):
             elif novo_username and novo_token:
                 username_atual, token_atual = novo_username, novo_token
             input(f"\n{Colors.GRAY}Pressione Enter para continuar...{Colors.RESET}")
+        
         elif escolha == "3":
+            configurar_api_key()
+        
+        elif escolha == "4":
             break
         else:
             print_box_message("Erro", "Opção inválida.", "error")
@@ -550,8 +617,7 @@ def modo_texto(username):
                         print_box_message("Erro", f"Comando '{comando}' não reconhecido. Use /comandos para ver opções.", "error")
                     continue
             
-            # Se não começar com /, verificar se é um comando de voz legado
-            # ou processar diretamente (o processar_comando agora também aceita comandos sem /)
+            # Se não começar com /, processar diretamente
             mostrar_spinner("Processando", 0.8)
             resposta = processar_comando(comando, username, modo='texto')
             
@@ -590,20 +656,19 @@ class VoiceCommandProcessor:
                         self.running = False
                         break
 
-                    # NOVO: Remover "/" do início do comando se o usuário falou algo como "barra abrir youtube"
-                    # Mas o ideal é que o usuário fale naturalmente sem "barra"
+                    # Remover "/" do início se usuário falou "barra"
                     if comando.lower().startswith(('barra ', '/', 'slash ')):
                         comando = comando.split(' ', 1)[1] if ' ' in comando else ""
                         if not comando:
                             falar("Por favor, fale o comando sem dizer 'barra'.")
                             continue
                     
-                    # Processar comando (usuário fala normalmente, sem /)
+                    # Processar comando
                     resposta = processar_comando(comando, self.username, modo='voz')
                     if resposta:
                         print(f"{Colors.GREEN}●{Colors.RESET} {Colors.BOLD}JARVIS{Colors.RESET}\n{resposta}\n")
                         
-                        # Se a resposta for muito longa, resumir para voz
+                        # Resumir resposta longa para voz
                         if len(resposta) > 200:
                             resposta_voz = resposta[:197] + "..."
                         else:
@@ -626,6 +691,10 @@ class VoiceCommandProcessor:
                     falar("Ocorreu um erro. Tente novamente.")
 
         threading.Thread(target=processor, daemon=True).start()
+
+    def stop(self):
+        self.running = False
+
 def modo_voz(username):
     """Modo de comando por voz"""
     limpar_tela()
@@ -658,7 +727,7 @@ def modo_voz(username):
         processor.stop()
         print_box_message("Erro", str(e), "error")
 
-    return None  # Retorna ao menu principal
+    return None
 
 def notificador_background(username, intervalo=10):
     """Thread de verificação de tarefas em background"""
