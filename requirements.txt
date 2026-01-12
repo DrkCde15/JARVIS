@@ -6,12 +6,7 @@ pyperclip
 plyer
 winapps
 pywhatkit
-langchain>=0.3.27
-langchain-core>=0.3.81
-langchain-community>=0.3.31
-langchain-google-genai>=2.1.7
-google-ai-generativelanguage>=0.6.18,<0.7.0
-SQLAlchemy
+google-genai
 SpeechRecognition
 pyttsx3
 pyaudio
@@ -27,3 +22,4 @@ pyfiglet
 python-jose[cryptography]
 passlib[bcrypt]
 python-multipart
+pymysql

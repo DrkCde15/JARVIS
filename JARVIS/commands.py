@@ -14,11 +14,21 @@ from bs4 import BeautifulSoup
 import yt_dlp # type: ignore
 import time
 from datetime import datetime
-from langchain_google_genai import ChatGoogleGenerativeAI  # type: ignore
-from langchain_core.messages import HumanMessage
 import pandas as pd
 from PIL import Image
-from memory import limpar_memoria_do_usuario, responder_com_gemini, registrar_log, obter_senha_smtp,salvar_senha_smtp
+from ai_service import (
+    MODEL_NAME,
+    recarregar_llm,
+    construir_historico,
+    gerar_resposta_ia
+)
+from memory import (
+    adicionar_mensagem_chat,
+    registrar_log,
+    salvar_senha_smtp,
+    obter_senha_smtp,
+    obter_session_id_por_token
+)
 import fitz
 from docx import Document
 from pptx import Presentation
@@ -680,7 +690,7 @@ def analisar_site(url, username=None):
         "Forneça um resumo objetivo destacando pontos importantes."
     )
 
-    resposta = responder_com_gemini([prompt], username)
+    resposta = gerar_resposta_ia([prompt], username)
     return resposta.content
 
 # ========== Baixar Video ==========
@@ -836,43 +846,115 @@ def parar_gravacao_sistema(username=None):
 # ========== Funções de imagens ==========
 class ImageAnalyser:
     def __init__(self):
-        self.llm = ChatGoogleGenerativeAI(
-            model="gemini-1.5-pro",
-            temperature=0.4
-        )
+        self.client = None
+        self._init_client()
 
-    def _run(self, image_path: str, username: str) -> str:
+    def _init_client(self):
         try:
-            if not os.path.exists(image_path):
-                return f"Caminho inválido: {image_path}"
+            from ai_service import client
+            self.client = client
+        except Exception:
+            self.client = None
 
+    def analisar(
+        self,
+        image_path: str,
+        session_id: str,
+        username: str | None = None
+    ) -> str:
+
+        if not os.path.exists(image_path):
+            return f"❌ Caminho inválido: {image_path}"
+
+        if self.client is None:
+            if not recarregar_llm():
+                return "❌ Gemini indisponível."
+
+            from ai_service import client
+            self.client = client
+
+        try:
             image = Image.open(image_path).convert("RGB")
 
-            mensagem = HumanMessage(
-                content=[
-                    {"type": "text", "text": "Descreva com detalhes tudo o que está visível nesta imagem."},
-                    {"type": "image", "image": image},
-                ]
+            prompt_usuario = (
+                "Analise a imagem a seguir considerando o contexto da conversa. "
+                "Descreva objetivamente tudo o que for relevante."
             )
 
-            response = self.llm.invoke([mensagem])
-            resposta_texto = response.content.strip()
+            # Histórico DA SESSÃO (mesmo padrão do chat)
+            mensagens = construir_historico(
+                session_id=session_id,
+                input_usuario=prompt_usuario
+            )
 
-            registrar_log(username, f"Análise de imagem: {image_path}")
-            registrar_log(username, f"Resultado: {resposta_texto}")
+            # Injeta a imagem na última mensagem do usuário
+            mensagens[-1] = {
+                "role": "user",
+                "content": [
+                    {"type": "text", "text": prompt_usuario},
+                    {"type": "image", "image": image}
+                ]
+            }
+
+            response = self.client.models.generate_content(
+                model=MODEL_NAME,
+                contents=mensagens,
+                generation_config={
+                    "temperature": 0.4
+                }
+            )
+
+            resposta_texto = response.text.strip()
+
+            # Persistência POR SESSÃO
+            adicionar_mensagem_chat(
+                session_id,
+                f"[IMAGEM] {image_path}",
+                "human"
+            )
+            adicionar_mensagem_chat(
+                session_id,
+                resposta_texto,
+                "ai"
+            )
+
+            # Auditoria opcional
+            if username:
+                registrar_log(username, f"[{session_id}] Análise de imagem: {image_path}")
+                registrar_log(username, f"[{session_id}] Resultado: {resposta_texto}")
 
             return resposta_texto
 
         except Exception as e:
-            return f"Erro ao analisar imagem: {e}"
+            erro = str(e)
+            if username:
+                registrar_log(username, f"[{session_id}] Erro imagem: {erro}")
+            return f"❌ Erro ao analisar imagem: {erro}"
 
-def analisar_imagem_comando(caminho, username, modo='texto'):
+# =====================================================
+# COMANDO
+# =====================================================
+
+def analisar_imagem_comando(
+    caminho: str,
+    session_id: str,
+    username: str | None = None,
+    modo: str = "texto"
+) -> str:
+
     if not os.path.exists(caminho):
-        return f"Caminho inválido: {caminho}"
+        return f"❌ Caminho inválido: {caminho}"
+
     analyser = ImageAnalyser()
-    resultado = analyser._run(caminho, username)
-    if modo == 'voz':
+    resultado = analyser.analisar(
+        image_path=caminho,
+        session_id=session_id,
+        username=username
+    )
+
+    if modo == "voz":
         falar(resultado)
+
     return resultado
 # ========== Funções de agenda ==========
 
@@ -1706,7 +1788,7 @@ def criar_codigo(match, username):
     descricao = input(f"{Colors.PURPLE}>{Colors.RESET} Descreva o que o código deve fazer: ").strip()
     prompt = f"Crie um código em {linguagem} que: {descricao}"
     try:
-        codigo = responder_com_gemini(prompt, username)
+        codigo = gerar_resposta_ia(prompt, username)
     except Exception as e:
         return f"Erro ao gerar código com Gemini: {e}"
     extensoes = {
@@ -1860,19 +1942,15 @@ def analisar_arquivos(match, username):
             return "O arquivo está vazio ou ilegível, senhor."
 
         prompt = f"Analise esse conteúdo extraído do arquivo:\n\n{conteudo}"
-        resposta = responder_com_gemini(prompt, username)
+        resposta = gerar_resposta_ia(prompt, username)
         return resposta
     except Exception as e:
         return f"Erro ao analisar arquivo: {e}"
 
-# ========== Limpar memória do usuário ==========
-def limpar_memoria_do_usuario_command(match, username):
-    return limpar_memoria_do_usuario(username)
-
 # ========== Função fallback Gemini ==========
 def responder_com_gemini_fallback(match, username):
     comando = match.group(0)
-    return responder_com_gemini(comando, username)
+    return gerar_resposta_ia(comando, username)
 
 # ========== Lista de comandos ==========
 padroes = [
@@ -1986,60 +2064,16 @@ padroes = [
     (re.compile(r'\/listar\s+arquivos(?:\s+\.(\w+))?(?:\s+em\s+(.+))?', re.IGNORECASE), listar_arquivos),
     (re.compile(r'\/criar\s+(?:arquivo\s+)?texto\b', re.IGNORECASE), criar_arquivo),
     (re.compile(r'\/criar\s+codigo\b', re.IGNORECASE), criar_codigo),
-    
-    # Memória
-    (re.compile(r'\/limpar\s+memoria\b', re.IGNORECASE), limpar_memoria_do_usuario_command)
 ]
 
 # Variável global para modo
 modo = 'texto'
 
 # ========== Enhanced Command Processor ==========
-def processar_comando(comando: str, username: str, modo: str = "texto"):
-    """Processa um comando do usuário de forma determinística"""
-    comando = comando.strip()
-    if not comando:
-        return "Nenhum comando recebido, senhor."
-
-    # BUSCA DIRETA NOS PADRÕES
-    for padrao, acao in padroes:
-        match = padrao.search(comando)
-        if not match:
-            continue
-
-        try:
-            # Ação pode ou não usar regex groups
-            resultado = acao(match, username)
-
-            # Gemini às vezes retorna objeto
-            if hasattr(resultado, "content"):
-                resultado = resultado.content
-
-            if not resultado:
-                resultado = "Comando executado, senhor."
-            if modo == "voz":
-                falar(resultado)
-            return resultado
-        except Exception as e:
-            erro = f"Erro ao executar comando: {e}"
-            if modo == "voz":
-                falar(erro)
-            return erro
-
-    # FALLBACK PARA GEMINI
-    try:
-        resposta = responder_com_gemini(comando, username)
-
-        if hasattr(resposta, "content"):
-            resposta = resposta.content
-
-        if modo == "voz":
-            falar(resposta)
-
-        return resposta
-
-    except Exception as e:
-        erro = f"Não consegui processar o comando, senhor. Erro: {e}"
-        if modo == "voz":
-            falar(erro)
-        return erro
+def processar_comando(comando, username, token=None, modo="texto"):
+    if token:
+        session_id = obter_session_id_por_token(token)
+        if session_id:
+            return gerar_resposta_ia(comando, session_id, username)
+    
+    return "Comando não reconhecido. Como posso ajudar?"
