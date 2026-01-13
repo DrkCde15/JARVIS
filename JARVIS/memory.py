@@ -32,7 +32,6 @@ def carregar_config_mysql():
 
     return config
 
-
 # =====================================================
 # JWT
 # =====================================================
@@ -41,14 +40,12 @@ SECRET_KEY = os.getenv("SECRET_KEY", "change-me-now")
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_DAYS = 30
 
-
 # =====================================================
 # POOL PyMySQL
 # =====================================================
 
 POOL_SIZE = 5
 _connection_pool: Queue[pymysql.connections.Connection] | None = None
-
 
 def init_pool():
     global _connection_pool
@@ -60,8 +57,6 @@ def init_pool():
         pool.put(conn)
 
     _connection_pool = pool
-    print("✅ Pool PyMySQL inicializado")
-
 
 try:
     init_pool()
@@ -69,17 +64,14 @@ except Exception as e:
     print(f"❌ Erro MySQL: {e}")
     _connection_pool = None
 
-
 def get_connection():
     if _connection_pool is None:
         raise RuntimeError("Pool MySQL não inicializado")
     return _connection_pool.get()
 
-
 def release_connection(conn):
     if _connection_pool:
         _connection_pool.put(conn)
-
 
 # =====================================================
 # QUERY
@@ -116,7 +108,6 @@ def executar_query(query, params=None, *, fetch=False, fetchone=False, commit=Fa
             cursor.close()
         if conn:
             release_connection(conn)
-
 
 # =====================================================
 # TABELAS
@@ -178,12 +169,8 @@ def criar_tabelas():
     for sql in tabelas:
         executar_query(sql, commit=True)
 
-    print("✅ Tabelas prontas")
-
-
 if _connection_pool:
     criar_tabelas()
-
 
 # =====================================================
 # AUTH / USUÁRIOS
@@ -191,7 +178,6 @@ if _connection_pool:
 
 def hash_senha(senha: str):
     return hashlib.sha256(senha.encode()).hexdigest()
-
 
 def criar_usuario(username: str, senha: str):
     executar_query(
@@ -201,7 +187,6 @@ def criar_usuario(username: str, senha: str):
     )
     registrar_log(username, "Usuário criado")
 
-
 def criar_token_acesso(username: str) -> str:
     payload = {
         "sub": username,
@@ -210,14 +195,12 @@ def criar_token_acesso(username: str) -> str:
     }
     return jwt.encode(payload, SECRET_KEY, algorithm=ALGORITHM)
 
-
 def verificar_token(token: str):
     try:
         payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
         return payload.get("sub")
     except JWTError:
         return None
-
 
 def autenticar_usuario(username: str, senha: str):
     user = executar_query(
@@ -232,7 +215,6 @@ def autenticar_usuario(username: str, senha: str):
     token = criar_token_acesso(username)
     session_id = criar_sessao(username, token)
     return token, session_id
-
 
 # =====================================================
 # SESSÕES
@@ -251,7 +233,6 @@ def criar_sessao(username: str, token: str) -> str:
     registrar_log(username, f"Sessão criada {session_id}")
     return session_id
 
-
 def obter_session_id_por_token(token: str):
     row = executar_query(
         """
@@ -263,7 +244,6 @@ def obter_session_id_por_token(token: str):
     )
     return row["id"] if row else None
 
-
 def logout_usuario(username: str, token: str):
     """Invalidar uma sessão específica"""
     executar_query(
@@ -273,7 +253,6 @@ def logout_usuario(username: str, token: str):
     )
     registrar_log(username, "Logout realizado")
 
-
 def invalidar_sessoes_usuario(username: str):
     """Invalidar todas as sessões de um usuário"""
     executar_query(
@@ -282,7 +261,6 @@ def invalidar_sessoes_usuario(username: str):
         commit=True
     )
     registrar_log(username, "Todas as sessões invalidadas")
-
 
 def listar_sessoes_ativas(username: str = None):
     """Listar sessões ativas, opcionalmente filtrando por usuário"""
@@ -310,7 +288,6 @@ def listar_sessoes_ativas(username: str = None):
         )
     return rows or []
 
-
 def get_usuario_ativo(token: str):
     """Obter usuário ativo baseado no token"""
     username = verificar_token(token)
@@ -325,7 +302,6 @@ def get_usuario_ativo(token: str):
     )
     return user["username"] if user else None
 
-
 # =====================================================
 # GESTÃO DE USUÁRIOS
 # =====================================================
@@ -338,7 +314,6 @@ def verificar_usuario_existe(username: str):
         fetchone=True
     )
     return row is not None
-
 
 def atualizar_senha_usuario(username: str, senha_atual: str, nova_senha: str):
     """Atualizar senha do usuário"""
@@ -358,7 +333,6 @@ def atualizar_senha_usuario(username: str, senha_atual: str, nova_senha: str):
     )
     registrar_log(username, "Senha atualizada")
     return True
-
 
 def atualizar_username_usuario(username_atual: str, novo_username: str):
     """Atualizar nome de usuário"""
@@ -408,7 +382,6 @@ def atualizar_username_usuario(username_atual: str, novo_username: str):
         cursor.close()
         release_connection(conn)
 
-
 # =====================================================
 # CHAT MEMORY
 # =====================================================
@@ -422,7 +395,6 @@ def adicionar_mensagem_chat(session_id: str, message: str, msg_type: str):
         (str(uuid.uuid4()), session_id, message, msg_type),
         commit=True,
     )
-
 
 def obter_historico_chat(session_id: str, limit: int = 10):
     rows = executar_query(
@@ -438,7 +410,6 @@ def obter_historico_chat(session_id: str, limit: int = 10):
     )
     return list(reversed(rows)) if rows else []
 
-
 # =====================================================
 # LOG
 # =====================================================
@@ -449,7 +420,6 @@ def registrar_log(username: str, acao: str):
         (str(uuid.uuid4()), username, acao),
         commit=True,
     )
-
 
 # =====================================================
 # SMTP
@@ -469,7 +439,6 @@ def salvar_senha_smtp(username: str, email: str, senha: str):
     )
     registrar_log(username, "Credenciais SMTP salvas/atualizadas")
 
-
 def obter_senha_smtp(username: str):
     row = executar_query(
         "SELECT email, senha_b64 FROM smtp_credentials WHERE username=%s",
@@ -479,7 +448,6 @@ def obter_senha_smtp(username: str):
     if not row:
         return None, None
     return row["email"], base64.b64decode(row["senha_b64"]).decode()
-
 
 # =====================================================
 # FUNÇÕES ADICIONAIS
@@ -506,11 +474,9 @@ def verificar_autenticacao_persistente(token: str) -> bool:
     
     return sessao is not None
 
-
 def obter_username_por_token(token: str):
     """Obter username a partir do token JWT"""
     return verificar_token(token)
-
 
 def atualizar_last_login(username: str):
     """Atualizar timestamp do último login"""
@@ -520,7 +486,6 @@ def atualizar_last_login(username: str):
         commit=True
     )
 
-
 def limpar_sessoes_expiradas():
     """Limpar sessões expiradas do banco de dados"""
     executar_query(
@@ -529,7 +494,6 @@ def limpar_sessoes_expiradas():
         commit=True
     )
     registrar_log("sistema", "Sessões expiradas limpas")
-
 
 def verificar_sessao_valida(session_id: str) -> bool:
     """Verificar se uma sessão é válida"""
@@ -542,7 +506,6 @@ def verificar_sessao_valida(session_id: str) -> bool:
         fetchone=True
     )
     return sessao is not None
-
 
 def obter_todas_sessoes(username: str = None):
     """Obter todas as sessões (ativas e inativas)"""
@@ -565,7 +528,6 @@ def obter_todas_sessoes(username: str = None):
         )
     return rows or []
 
-
 def obter_informacoes_usuario(username: str):
     """Obter informações do usuário"""
     user = executar_query(
@@ -577,7 +539,6 @@ def obter_informacoes_usuario(username: str):
         fetchone=True
     )
     return user
-
 
 def contar_mensagens_sessao(session_id: str) -> int:
     """Contar número de mensagens em uma sessão"""

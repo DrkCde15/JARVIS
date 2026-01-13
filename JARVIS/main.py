@@ -3,7 +3,6 @@ import sys
 import getpass
 import time
 import speech_recognition as sr
-
 from commands import processar_comando, falar
 from memory import (
     # Funções existentes no memory.py
@@ -13,28 +12,16 @@ from memory import (
     obter_session_id_por_token,
     adicionar_mensagem_chat, 
     obter_historico_chat,
-    registrar_log,
-    
     # Funções de autenticação/sessão
     logout_usuario, 
     invalidar_sessoes_usuario,
-    listar_sessoes_ativas, 
-    get_usuario_ativo,
-    
+    listar_sessoes_ativas,
     # Funções de gerenciamento de usuário
     atualizar_senha_usuario,
     atualizar_username_usuario, 
     verificar_usuario_existe,
-    
     # Função de verificação de token
-    verificar_token,
-    
-    # Funções SMTP
-    salvar_senha_smtp,
-    obter_senha_smtp,
-    
-    # Função para verificar autenticação persistente
-    verificar_autenticacao_persistente,
+    verificar_token
 )
 
 # ================== CORES ==================

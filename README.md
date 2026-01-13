@@ -33,8 +33,7 @@ Seja para abrir aplicativos, analisar arquivos, criar códigos, instalar program
 
 - **Python**
 - **Google Gemini API** (IA generativa)
-- **LangChain** (Memória de conversas)
-- **SQLite** (Banco de dados)
+- **MySQL** (Banco de dados/Memória de conversas)
 - **SpeechRecognition / pyttsx3** (Reconhecimento e síntese de voz)
 
 ---
