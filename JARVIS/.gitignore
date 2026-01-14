@@ -2,3 +2,4 @@
 jenv
 data/
 *.txt
+.jarvis_session
