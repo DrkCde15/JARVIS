@@ -15,7 +15,6 @@ from queue import Queue
 
 def carregar_config_mysql():
     load_dotenv(override=True)
-
     config = {
         "host": os.getenv("MYSQL_HOST", "localhost"),
         "port": int(os.getenv("MYSQL_PORT", "3306")),
@@ -26,10 +25,8 @@ def carregar_config_mysql():
         "cursorclass": DictCursor,
         "autocommit": False,
     }
-
     if not config["password"]:
         raise ValueError("❌ MYSQL_PASSWORD não configurado no .env")
-
     return config
 
 # =====================================================
@@ -43,19 +40,16 @@ ACCESS_TOKEN_EXPIRE_DAYS = 30
 # =====================================================
 # POOL PyMySQL
 # =====================================================
-
 POOL_SIZE = 5
 _connection_pool: Queue[pymysql.connections.Connection] | None = None
 
 def init_pool():
     global _connection_pool
     cfg = carregar_config_mysql()
-
     pool = Queue(maxsize=POOL_SIZE)
     for _ in range(POOL_SIZE):
         conn = pymysql.connect(**cfg)
         pool.put(conn)
-
     _connection_pool = pool
 
 try:
@@ -88,13 +82,10 @@ def executar_query(query, params=None, *, fetch=False, fetchone=False, commit=Fa
         if commit:
             conn.commit()
             return cursor.lastrowid
-
         if fetchone:
             return cursor.fetchone()
-
         if fetch:
             return cursor.fetchall()
-
         return True
 
     except Exception as e:
@@ -168,7 +159,6 @@ def criar_tabelas():
 
     for sql in tabelas:
         executar_query(sql, commit=True)
-
 if _connection_pool:
     criar_tabelas()
 
@@ -223,13 +213,11 @@ def autenticar_usuario(username: str, senha: str):
 def criar_sessao(username: str, token: str) -> str:
     session_id = str(uuid.uuid4())
     expires = datetime.utcnow() + timedelta(days=ACCESS_TOKEN_EXPIRE_DAYS)
-
     executar_query(
         "INSERT INTO sessoes (id, username, token, expires_at) VALUES (%s,%s,%s,%s)",
         (session_id, username, token, expires),
         commit=True,
     )
-
     registrar_log(username, f"Sessão criada {session_id}")
     return session_id
 
@@ -368,14 +356,13 @@ def atualizar_username_usuario(username_atual: str, novo_username: str):
             "UPDATE smtp_credentials SET username=%s WHERE username=%s",
             (novo_username, username_atual)
         )
-        
         conn.commit()
         registrar_log(username_atual, f"Username atualizado para {novo_username}")
         return True
         
     except Exception as e:
         conn.rollback()
-        print(f"❌ Erro ao atualizar username: {e}")
+        print(f"Erro ao atualizar username: {e}")
         return False
         
     finally:
@@ -395,7 +382,6 @@ def adicionar_mensagem_chat(session_id: str, message: str, msg_type: str):
         (str(uuid.uuid4()), session_id, message, msg_type),
         commit=True,
     )
-
 def obter_historico_chat(session_id: str, limit: int = 10):
     rows = executar_query(
         """
@@ -454,10 +440,6 @@ def obter_senha_smtp(username: str):
 # =====================================================
 
 def verificar_autenticacao_persistente(token: str) -> bool:
-    """
-    Verificar se a autenticação ainda é válida
-    (Função de compatibilidade - pode ser usada pelo main.py)
-    """
     username = verificar_token(token)
     if not username:
         return False
@@ -487,7 +469,6 @@ def atualizar_last_login(username: str):
     )
 
 def limpar_sessoes_expiradas():
-    """Limpar sessões expiradas do banco de dados"""
     executar_query(
         "UPDATE sessoes SET is_valid=FALSE WHERE expires_at <= %s",
         (datetime.utcnow(),),
@@ -496,7 +477,6 @@ def limpar_sessoes_expiradas():
     registrar_log("sistema", "Sessões expiradas limpas")
 
 def verificar_sessao_valida(session_id: str) -> bool:
-    """Verificar se uma sessão é válida"""
     sessao = executar_query(
         """
         SELECT id FROM sessoes 
@@ -508,7 +488,6 @@ def verificar_sessao_valida(session_id: str) -> bool:
     return sessao is not None
 
 def obter_todas_sessoes(username: str = None):
-    """Obter todas as sessões (ativas e inativas)"""
     if username:
         rows = executar_query(
             """
@@ -529,7 +508,6 @@ def obter_todas_sessoes(username: str = None):
     return rows or []
 
 def obter_informacoes_usuario(username: str):
-    """Obter informações do usuário"""
     user = executar_query(
         """
         SELECT username, created_at, last_login, is_active
@@ -541,7 +519,6 @@ def obter_informacoes_usuario(username: str):
     return user
 
 def contar_mensagens_sessao(session_id: str) -> int:
-    """Contar número de mensagens em uma sessão"""
     result = executar_query(
         "SELECT COUNT(*) as count FROM message_store WHERE session_id=%s",
         (session_id,),

@@ -2,8 +2,7 @@ import os
 import sys
 import getpass
 import time
-import speech_recognition as sr
-from commands import processar_comando, falar
+from commands import processar_comando
 from memory import (
     criar_usuario, 
     autenticar_usuario, 
@@ -56,7 +55,6 @@ class Colors:
     RED = '\033[91m'
     RESET = '\033[0m'
     CLEAR_LINE = '\033[2K'
-
 def limpar_tela():
     os.system('cls' if os.name == 'nt' else 'clear')
 
@@ -129,7 +127,6 @@ def exibir_banner_comandos():
             "/horas | /data            - Informa data e hora atual"
         ])
     ]
-
     for cor, categoria, itens in comandos:
         print(f"\n{cor}{categoria}{Colors.RESET}")
         for item in itens:
@@ -151,7 +148,6 @@ def mostrar_spinner(msg, duracao=0.8):
     print("\r" + Colors.CLEAR_LINE, end="")
 
 # ================== GERENCIADOR DE SESSÃO ==================
-
 class SessionManager:
     def __init__(self):
         self.username = None
@@ -165,21 +161,37 @@ class SessionManager:
         if not self.session_id:
             self.session_id = criar_sessao(username, token)
 
-# ================== MODOS DE OPERAÇÃO ==================
+# ================== MODOS DE OPERAÇÃO =================
 
 def modo_texto(session: SessionManager):
     limpar_tela()
     mostrar_banner_principal()
     print(f"{Colors.GRAY}Digite {Colors.WHITE}/comandos{Colors.GRAY} para ajuda ou {Colors.WHITE}/sair{Colors.GRAY}.{Colors.RESET}\n")
+    
+    largura_caixa = 60 # Você pode aumentar ou diminuir a largura aqui
 
     while True:
         try:
-            comando = input(f"{Colors.CYAN}➤ {Colors.RESET}").strip()
-            if not comando: continue
+            # 1. Desenha a caixa completa ANTES do input
+            print(f"{Colors.CYAN}╭{'─' * (largura_caixa - 2)}╮")
+            print(f"│ ➤ {' ' * (largura_caixa - 6)}│")
+            print(f"╰{'─' * (largura_caixa - 2)}╯{Colors.RESET}")
+
+            # 2. Teletransporta o cursor para dentro da caixa
+            # \033[2A (sobe 2 linhas) | \033[6C (anda 6 espaços para a direita)
+            sys.stdout.write("\033[2A\033[6C")
+            sys.stdout.flush()
+
+            # 3. Captura o input
+            comando = input().strip()
             
+            # 4. Move o cursor para baixo da caixa para o restante do log não bugar
+            sys.stdout.write("\033[1B\r")
+            sys.stdout.flush()
+
+            if not comando: continue
             if comando.lower() == "/sair": break
             
-            # Executa o banner e já volta para o próximo input imediatamente
             if comando.lower() == "/comandos":
                 exibir_banner_comandos()
                 continue
@@ -189,8 +201,7 @@ def modo_texto(session: SessionManager):
                 limpar_login_local()
                 return "expired"
 
-            mostrar_spinner("Processando")
-            
+            mostrar_spinner("Processando") 
             resposta = processar_comando(
                 comando=comando,
                 username=session.username,
@@ -205,7 +216,6 @@ def modo_texto(session: SessionManager):
 
         except KeyboardInterrupt:
             break
-
 # ================== LOOP PRINCIPAL ==================
 
 def main():

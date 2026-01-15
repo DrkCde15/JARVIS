@@ -106,7 +106,6 @@ class VoiceCommandSystem:
     def speak(self, text: str):
         """Non-blocking speech with queue management"""
         print(f"JARVIS: {text}")
-        
         if not self.engine:
             return
 
@@ -120,7 +119,6 @@ class VoiceCommandSystem:
                     print(f"Speech error: {e}")
                 finally:
                     self.is_speaking = False
-
         threading.Thread(target=_speak, daemon=True).start()
 
     def add_command(self, command_func: Callable, *args, **kwargs):
@@ -203,18 +201,14 @@ def instalar_programa_via_cmd_admin(programa=None, username=None):
     """Função principal para instalar programas via choco com privilégios admin"""
     if not programa:
         return "Nenhum programa informado para instalação."
-
     if not relancar_como_admin():
         return "Erro ao tentar elevar privilégios."
-
     if not verificar_choco_instalado():
         print("[*] Chocolatey não encontrado, instalando...")
         sucesso = instalar_chocolatey_via_powershell()
         if not sucesso:
             return "Falha ao instalar Chocolatey, abortando."
-
         time.sleep(5)
-
     sucesso = instalar_programa_choco(programa)
     if sucesso:
         return f"Programa {programa} instalado com sucesso."
@@ -243,19 +237,15 @@ def listar_aplicativos_winapps(match=None, username=None):
         apps = list(winapps.list_installed())
         if not apps:
             return "Nenhum aplicativo encontrado, senhor."
-        
         lista = ["Aplicativos instalados:"]
         for app in apps[:100]:  # Limita a 100
             versao = app.version if app.version else 'N/A'
             lista.append(f"- {app.name} (v{versao})")
-
         if len(apps) > 100:
             lista.append(f"\n... e mais {len(apps) - 100} aplicativos.")
-        
         return "\n".join(lista)
     except Exception as e:
         return f"Erro ao listar aplicativos: {e}"
-
 
 def buscar_aplicativo_winapps(nome_app):
     """Busca um aplicativo específico instalado"""
@@ -270,10 +260,8 @@ def buscar_aplicativo_winapps(nome_app):
 def abrir_aplicativo_winapps(match, username=None):
     """Abre aplicativo usando winapps"""
     nome = match.group(2).lower().strip()
-    
     try:
         app = buscar_aplicativo_winapps(nome)
-        
         if app:
             # Tentar abrir via local de instalação
             if app.install_location and os.path.exists(app.install_location):
@@ -284,19 +272,15 @@ def abrir_aplicativo_winapps(match, username=None):
             return f"Abrindo {app.name}, senhor."
         else:
             return f"Aplicativo '{nome}' não encontrado, senhor."
-            
     except Exception as e:
         return f"Erro ao abrir aplicativo: {e}"
-
 
 def desinstalar_app_winapps(nome_app, username=None, modo='texto'):
     """Desinstala aplicativo usando winapps"""
     try:
         app = buscar_aplicativo_winapps(nome_app)
-        
         if not app:
             return f"Aplicativo '{nome_app}' não encontrado, senhor."
-        
         resposta = f"Desinstalando {app.name}..."
         if modo == 'voz':
             falar(resposta)
@@ -308,11 +292,9 @@ def desinstalar_app_winapps(nome_app, username=None, modo='texto'):
             return f"{app.name} desinstalado com sucesso, senhor."
         except:
             return desinstalar_programa(nome_app, username, modo)
-        
     except Exception as e:
         # Fallback para chocolatey
         return desinstalar_programa(nome_app, username, modo)
-
 
 def info_aplicativo_winapps(nome_app, username=None):
     """Obtém informações detalhadas de um aplicativo"""
@@ -321,7 +303,6 @@ def info_aplicativo_winapps(nome_app, username=None):
         
         if not app:
             return f"Aplicativo '{nome_app}' não encontrado, senhor."
-        
         info = f"""Informações do Aplicativo:
 - Nome: {app.name}
 - Versão: {app.version if app.version else 'N/A'}
@@ -330,13 +311,10 @@ def info_aplicativo_winapps(nome_app, username=None):
 - Local: {app.install_location if app.install_location else 'N/A'}"""
         
         return info.strip()
-        
     except Exception as e:
         return f"Erro ao obter informações: {e}"
 
-
 # ========== Automação de WhatsApp ==========
-
 def enviar_whatsapp_agendado(match, username=None, modo='texto'):
     """Envia mensagem no WhatsApp com horário agendado"""
     try:
@@ -409,22 +387,18 @@ def enviar_whatsapp(match, username=None, modo='texto'):
                 agora = datetime.now()
                 minuto_envio = agora.minute + 1
                 hora_envio = agora.hour
-                
                 if minuto_envio >= 60:
                     minuto_envio = 0
                     hora_envio = hora_envio + 1
                     if hora_envio >= 24:
                         hora_envio = 0
-                
                 kit.sendwhatmsg(numero, mensagem, hora_envio, minuto_envio, wait_time=10, tab_close=False)
                 return f"Mensagem agendada para {hora_envio:02d}:{minuto_envio:02d} (quase instantâneo), senhor."
             else:
                 raise e1
-        
     except Exception as e:
         erro_msg = f"Erro ao enviar WhatsApp: {e}"
         return erro_msg
-
 
 def enviar_whatsapp_grupo(match, username=None, modo='texto'):
     """Envia mensagem para grupo usando ID obtido via Inspecionar Elemento"""
@@ -441,16 +415,13 @@ def enviar_whatsapp_grupo(match, username=None, modo='texto'):
         print(f"• {Colors.CYAN}120363012345678901@g.us{Colors.RESET}")
         print(f"• {Colors.CYAN}5511999999999-1623456789@g.us{Colors.RESET}")
         print(f"• Sempre termina com {Colors.YELLOW}@g.us{Colors.RESET}")
-        
         print(f"\n{Colors.GRAY}{'='*60}{Colors.RESET}")
         
         # Pedir o ID do grupo
         grupo_id = input(f"\n{Colors.PURPLE}>{Colors.RESET} Cole o ID do grupo (@g.us): ").strip()
         mensagem = input(f"{Colors.PURPLE}>{Colors.RESET} Digite a mensagem: ").strip()
-        
         if not grupo_id:
             return "ID do grupo é obrigatório, senhor."
-        
         if not mensagem:
             return "Mensagem é obrigatória, senhor."
         
@@ -460,7 +431,6 @@ def enviar_whatsapp_grupo(match, username=None, modo='texto'):
             confirmar = input(f"{Colors.YELLOW}❓{Colors.RESET}  Continuar mesmo assim? (s/n): ").strip().lower()
             if confirmar not in ['s', 'sim', 'y', 'yes']:
                 return "Operação cancelada."
-        
         msg = f"Preparando para enviar para o grupo..."
         if modo == 'voz':
             falar("Preparando mensagem para o grupo")
@@ -478,7 +448,6 @@ def enviar_whatsapp_grupo(match, username=None, modo='texto'):
             hora = (hora + 1) % 24
         
         print(f"{Colors.GRAY}⏰{Colors.RESET} Agendando para {hora:02d}:{minuto:02d}...")
-        
         try:
             # Testar se o pywhatkit aceita o ID de grupo
             kit.sendwhatmsg_to_group(
@@ -489,7 +458,6 @@ def enviar_whatsapp_grupo(match, username=None, modo='texto'):
                 wait_time=20,
                 tab_close=False
             )
-            
             return f"Mensagem agendada para o grupo às {hora:02d}:{minuto:02d}, senhor."
             
         except Exception as e:
@@ -527,7 +495,6 @@ def enviar_whatsapp_grupo(match, username=None, modo='texto'):
         return f"Erro geral: {e}"
 
 # ========== YouTube e Pesquisa ==========
-
 def tocar_musica_pywhatkit(match, username=None, modo='texto'):
     """Toca música no YouTube usando pywhatkit"""
     try:
@@ -544,7 +511,6 @@ def tocar_musica_pywhatkit(match, username=None, modo='texto'):
         kit.playonyt(musica)
         
         return f"Reproduzindo '{musica}' no YouTube, senhor."
-        
     except Exception as e:
         return f"Erro ao abrir YouTube: {e}"
 
@@ -791,11 +757,8 @@ def baixar_audio_youtube(url, username, modo='texto'):
 
         ext = info.get('ext', 'webm')  
         arquivo_baixado = destino / f"{titulo}.{ext}"
-
         arquivo_convertido = converter_para_mp3(arquivo_baixado)
-
         arquivo_baixado.unlink()
-
         msg = f"Áudio '{titulo}' baixado e convertido para MP3 com sucesso em {destino}."
 
         if modo == 'voz':
@@ -980,7 +943,6 @@ def ler_agenda_df(username: str) -> pd.DataFrame:
     
     try:
         df = pd.read_excel(path)
-        
         # Garantir que as colunas existam
         for coluna in COLUNAS:
             if coluna not in df.columns:
@@ -1014,7 +976,7 @@ def adicionar_tarefa(tarefa: str, data: str, hora: str | None, username: str) ->
     try:
         dt = _parse_datetime(data, hora)
     except ValueError as e:
-        return f"❌ Data ou hora inválida. Use DD/MM/AAAA e HH:MM. Erro: {e}"
+        return f"Data ou hora inválida. Use DD/MM/AAAA e HH:MM. Erro: {e}"
 
     df = ler_agenda_df(username)
 
@@ -1028,7 +990,7 @@ def adicionar_tarefa(tarefa: str, data: str, hora: str | None, username: str) ->
     salvar_agenda_df(df, username)
 
     hora_str = f" às {dt.strftime('%H:%M')}" if hora else ""
-    return f"✅ Tarefa '{tarefa}' adicionada para {dt.strftime('%d/%m/%Y')}{hora_str}"
+    return f"Tarefa '{tarefa}' adicionada para {dt.strftime('%d/%m/%Y')}{hora_str}"
 
 def adicionar_tarefa_interativa(match, username, modo='texto'):
     """Versão interativa que pede os dados via input"""
@@ -1038,11 +1000,11 @@ def adicionar_tarefa_interativa(match, username, modo='texto'):
         
         tarefa = input(f"{Colors.PURPLE}>{Colors.RESET} Descrição da tarefa: ").strip()
         if not tarefa:
-            return "❌ Tarefa não pode ser vazia."
+            return "Tarefa não pode ser vazia."
         
         data = input(f"{Colors.PURPLE}>{Colors.RESET} Data (DD/MM/AAAA): ").strip()
         if not data:
-            return "❌ Data é obrigatória."
+            return "Data é obrigatória."
         
         hora = input(f"{Colors.PURPLE}>{Colors.RESET} Hora (HH:MM ou Enter para sem hora): ").strip()
         if not hora:
@@ -1059,7 +1021,7 @@ def adicionar_tarefa_interativa(match, username, modo='texto'):
         return resultado
         
     except Exception as e:
-        return f"❌ Erro ao adicionar tarefa: {e}"
+        return f"Erro ao adicionar tarefa: {e}"
 
 def listar_agenda(username, modo='texto'):
     """Lista todas as tarefas da agenda"""
@@ -1171,7 +1133,6 @@ def marcar_como_concluida_comando(match, username, modo='texto'):
         for i, row in pendentes.iterrows():
             data = row["DataHora"].strftime("%d/%m/%Y %H:%M") if pd.notna(row["DataHora"]) else "Sem data"
             print(f"{i+1}. {row['Tarefa']} — {data}")
-        
         try:
             escolha = input(f"\n{Colors.PURPLE}>{Colors.RESET} Número da tarefa ou nome: ").strip()
             
@@ -1182,7 +1143,7 @@ def marcar_como_concluida_comando(match, username, modo='texto'):
                     tarefa = pendentes.iloc[num-1]["Tarefa"]
                     termo = tarefa
                 else:
-                    return "❌ Número inválido."
+                    return "Número inválido."
             else:
                 # Usar como termo de busca
                 termo = escolha
@@ -1206,13 +1167,13 @@ def remover_tarefa(termo: str, username: str) -> str:
     df = ler_agenda_df(username)
 
     if df.empty:
-        return "❌ Agenda vazia."
+        return "Agenda vazia."
 
     mask = df["Tarefa"].str.lower().str.contains(termo.lower(), na=False)
     encontrados = df[mask]
 
     if encontrados.empty:
-        return f"❌ Nenhuma tarefa encontrada com '{termo}'."
+        return f"Nenhuma tarefa encontrada com '{termo}'."
 
     if len(encontrados) > 1:
         # Mostrar múltiplas correspondências
@@ -1245,13 +1206,11 @@ def remover_tarefa_comando(match, username, modo='texto'):
         
         if df.empty:
             return "📭 Agenda vazia."
-        
         print(f"\n{Colors.YELLOW}Todas as tarefas:{Colors.RESET}")
         for i, row in df.iterrows():
             status = "✅" if row["Status"] == "Concluído" else "⏳"
             data = row["DataHora"].strftime("%d/%m/%Y %H:%M") if pd.notna(row["DataHora"]) else "Sem data"
             print(f"{i+1}. {status} {row['Tarefa']} — {data}")
-        
         try:
             escolha = input(f"\n{Colors.PURPLE}>{Colors.RESET} Número da tarefa para remover: ").strip()
             
@@ -1278,7 +1237,6 @@ def remover_tarefa_comando(match, username, modo='texto'):
             falar("Múltiplas tarefas encontradas")
         else:
             falar("Erro ao remover tarefa")
-    
     return resultado
 
 def limpar_agenda_completa(username, modo='texto'):
@@ -1296,14 +1254,13 @@ def limpar_agenda_completa(username, modo='texto'):
                 falar("Agenda limpa com sucesso")
             return resultado
         except Exception as e:
-            return f"❌ Erro ao limpar agenda: {e}"
+            return f"Erro ao limpar agenda: {e}"
     else:
-        return "❌ Operação cancelada."
+        return "Operação cancelada."
 
 def agenda_hoje(username, modo='texto'):
     """Mostra tarefas para hoje COM NOTIFICAÇÃO"""
     hoje = datetime.now().date()
-    
     df = ler_agenda_df(username)
     if df.empty:
         mensagem = "📭 Agenda vazia."
@@ -1323,14 +1280,13 @@ def agenda_hoje(username, modo='texto'):
         # Notificação positiva
         try:
             notification.notify(
-                title='🎉 JARVIS - Sem Tarefas!',
+                title='Sem Tarefas!',
                 message='Você não tem tarefas para hoje!',
                 app_name='JARVIS Assistant',
                 timeout=5
             )
         except:
             pass
-            
         return mensagem
     
     # Separar concluídas e pendentes
@@ -1353,7 +1309,7 @@ def agenda_hoje(username, modo='texto'):
                 tasks_list += f"\n• e mais {len(pendentes) - 3} tarefas..."
             
             notification.notify(
-                title=f'📋 JARVIS - {len(pendentes)} Tarefa(s) Pendente(s)',
+                title=f'JARVIS - {len(pendentes)} Tarefa(s) Pendente(s)',
                 message=tasks_list,
                 app_name='JARVIS Assistant',
                 timeout=15
@@ -1370,7 +1326,6 @@ def agenda_hoje(username, modo='texto'):
     # Resumo
     linhas.append(f"\n{Colors.GRAY}{'='*40}{Colors.RESET}")
     linhas.append(f"📊 Hoje: {len(pendentes)} pendentes, {len(concluidas)} concluídas")
-    
     resultado = "\n".join(linhas)
     
     if modo == 'voz':
@@ -1378,17 +1333,16 @@ def agenda_hoje(username, modo='texto'):
             falar(f"Você tem {len(pendentes)} tarefas pendentes para hoje")
         else:
             falar("Todas as tarefas de hoje estão concluídas")
-    
     return resultado
 
 def editar_tarefa(match, username, modo='texto'):
     """Edita uma tarefa existente"""
     try:
-        print(f"\n{Colors.CYAN}✏️ Editar tarefa{Colors.RESET}")
+        print(f"\n{Colors.CYAN}Editar tarefa{Colors.RESET}")
         df = ler_agenda_df(username)
         
         if df.empty:
-            return "📭 Agenda vazia."
+            return "Agenda vazia."
         
         print(f"\n{Colors.YELLOW}Todas as tarefas:{Colors.RESET}")
         for i, row in df.iterrows():
@@ -1399,12 +1353,11 @@ def editar_tarefa(match, username, modo='texto'):
         escolha = input(f"\n{Colors.PURPLE}>{Colors.RESET} Número da tarefa para editar: ").strip()
         
         if not escolha.isdigit():
-            return "❌ Por favor, digite um número."
+            return "Por favor, digite um número."
         
         num = int(escolha)
         if not (1 <= num <= len(df)):
-            return "❌ Número inválido."
-        
+            return "Número inválido."
         idx = num - 1
         
         print(f"\n{Colors.GRAY}Deixe em branco para manter o valor atual{Colors.RESET}")
@@ -1435,7 +1388,7 @@ def editar_tarefa(match, username, modo='texto'):
                     nova_dt = _parse_datetime(nova_data, None)
                 df.at[idx, "DataHora"] = nova_dt
             except ValueError as e:
-                return f"❌ Data/hora inválida: {e}"
+                return f"Data/hora inválida: {e}"
         
         # Editar status
         atual_status = df.at[idx, "Status"]
@@ -1455,7 +1408,7 @@ def editar_tarefa(match, username, modo='texto'):
         return resultado
         
     except Exception as e:
-        return f"❌ Erro ao editar tarefa: {e}"
+        return f"Erro ao editar tarefa: {e}"
 
 def notificar_tarefas_do_dia(username):
     """Envia notificação com resumo das tarefas do dia"""
@@ -1463,7 +1416,6 @@ def notificar_tarefas_do_dia(username):
         df = ler_agenda_df(username)
         if df.empty:
             return
-        
         hoje = datetime.now().date()
         
         # Filtrar tarefas de hoje
@@ -1476,7 +1428,7 @@ def notificar_tarefas_do_dia(username):
             
             if pendentes > 0:
                 notification.notify(
-                    title='📅 JARVIS - Tarefas de Hoje',
+                    title='Tarefas de Hoje',
                     message=f'{pendentes} tarefa(s) pendente(s) para hoje',
                     app_name='JARVIS Assistant',
                     timeout=10
@@ -1505,7 +1457,7 @@ def checar_tarefas_atrasadas(username, modo='texto'):
             falar("Você não tem tarefas atrasadas")
         return "✅ Nenhuma tarefa atrasada!"
 
-    # 📢 EXIBIR NOTIFICAÇÃO DO WINDOWS
+    # EXIBIR NOTIFICAÇÃO DO WINDOWS
     try:
         notification.notify(
             title='🚨 JARVIS - Tarefas Atrasadas!',
@@ -1521,7 +1473,6 @@ def checar_tarefas_atrasadas(username, modo='texto'):
     
     if modo == 'voz':
         falar(f"ATENÇÃO! Você tem {len(atrasadas)} tarefas atrasadas!")
-    
     print(mensagem)
     
     resultados = []
@@ -1576,7 +1527,6 @@ def checar_tarefas_atrasadas(username, modo='texto'):
 
 def inicializar_sistema_agenda(username):
     """Inicializa o sistema de agenda para o usuário COM NOTIFICAÇÕES PERIÓDICAS"""
-    # Criar diretório se não existir
     AGENDA_DIR.mkdir(parents=True, exist_ok=True)
     
     # Inicializar agenda
@@ -1611,7 +1561,6 @@ def inicializar_sistema_agenda(username):
                         app_name='JARVIS Assistant',
                         timeout=10
                     )
-                    
                     # Falar alerta se modo voz estiver ativo
                     if modo == 'voz':
                         falar(f"Lembrete: você ainda tem {len(atrasadas)} tarefas atrasadas")
@@ -1619,7 +1568,7 @@ def inicializar_sistema_agenda(username):
             except Exception as e:
                 print(f"Erro na verificação periódica: {e}")
                 continue
-    
+            
     # Iniciar thread em segundo plano
     threading.Thread(target=verificar_periodicamente, daemon=True).start()
     
@@ -1630,7 +1579,6 @@ def inicializar_sistema_agenda(username):
     hoje = agenda_hoje(username, modo='texto')
     if "Nenhuma tarefa para hoje" not in hoje:
         print(hoje)
-    
     return resultado
 
 # ========== Abrir sites ==========
@@ -1654,6 +1602,7 @@ def abrir_site(match, username):
         "drive": "https://drive.google.com/drive/u/0/home",
         "google drive": "https://drive.google.com/drive/u/0/home"
     }
+    
     for nome, url in sites.items():
         if nome in comando:
             try:
@@ -1664,7 +1613,6 @@ def abrir_site(match, username):
     return "Site não reconhecido, senhor."
 
 # ======= Atualizações e limpeza =======
-
 def verificar_atualizacoes(match, username):
     try:
         subprocess.run("powershell -Command \"Get-WindowsUpdate\"", shell=True)
@@ -1797,7 +1745,7 @@ def criar_codigo(match, username):
         "java": ".java",
         "html": ".html",
         "c": ".c",
-        "cpp": ".cpp",
+        "c++": ".cpp",
         "go": ".go",
         "php": ".php",
         "ruby": ".rb",
@@ -1810,6 +1758,7 @@ def criar_codigo(match, username):
         "sql": ".sql",
         "r": ".r"
     }
+    
     ext = extensoes.get(linguagem, ".txt")
     nome_arquivo = input(f"{Colors.PURPLE}>{Colors.RESET} Nome do arquivo (sem extensão)? ").strip() + ext
     caminho = documentos / nome_arquivo
@@ -2071,9 +2020,30 @@ modo = 'texto'
 
 # ========== Enhanced Command Processor ==========
 def processar_comando(comando, username, token=None, modo="texto"):
+    comando = comando.strip()
+
+    # ===============================
+    # COMANDOS
+    # ===============================
+    if comando.startswith("/"):
+        for padrao, funcao in padroes:
+            match = padrao.match(comando)
+            if match:
+                try:
+                    # função com regex groups
+                    return funcao(match, username)
+                except TypeError:
+                    # função simples (sem match)
+                    return funcao(username)
+
+        return "Comando não reconhecido."
+
+    # ===============================
+    # TEXTO LIVRE → IA
+    # ===============================
     if token:
         session_id = obter_session_id_por_token(token)
         if session_id:
             return gerar_resposta_ia(comando, session_id, username)
-    
-    return "Comando não reconhecido. Como posso ajudar?"
+
+    return "Sessão inválida."

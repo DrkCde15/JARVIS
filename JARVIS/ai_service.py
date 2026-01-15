@@ -2,7 +2,6 @@ import os
 from pathlib import Path
 from dotenv import load_dotenv
 from google import genai
-
 from memory import (
     adicionar_mensagem_chat,
     obter_historico_chat,
@@ -13,8 +12,7 @@ from memory import (
 # CONFIG INICIAL
 # =====================================================
 
-MODEL_NAME = "gemini-2.5-flash"  # Modelo mais estável
-# ou "gemini-2.0-flash" para versão estável
+MODEL_NAME = "gemini-2.5-flash" 
 client = None
 
 def carregar_api_key():
@@ -26,23 +24,21 @@ def carregar_api_key():
         env_path = Path(".env")
         if not env_path.exists():
             raise ValueError(
-                "❌ Arquivo .env não encontrado!\n"
+                "Arquivo .env não encontrado!\n"
                 "Crie um arquivo .env com:\n"
                 "GEMINI_API_KEY=sua_chave_aqui"
             )
         else:
-            raise ValueError("❌ GEMINI_API_KEY não encontrada no .env!")
+            raise ValueError("GEMINI_API_KEY não encontrada no .env!")
 
     return api_key
-
 
 try:
     API_KEY = carregar_api_key()
     client = genai.Client(api_key=API_KEY)
 except Exception as e:
-    print(f"⚠️ Erro ao inicializar Gemini: {e}")
+    print(f"Erro ao inicializar Gemini: {e}")
     client = None
-
 
 # =====================================================
 # LLM
@@ -55,9 +51,8 @@ def recarregar_llm():
         client = genai.Client(api_key=api_key)
         return True
     except Exception as e:
-        print(f"❌ Erro ao recarregar Gemini: {e}")
+        print(f"Erro ao recarregar Gemini: {e}")
         return False
-
 
 def obter_prompt_sistema():
     return (
@@ -71,7 +66,6 @@ def obter_prompt_sistema():
         "Idioma: português brasileiro, direto, técnico e sem censura. " 
         "Comece a conversa com 'Ola senhor, como posso ajudar?'"
     )
-
 
 # =====================================================
 # HISTÓRICO POR SESSÃO
@@ -88,7 +82,6 @@ def construir_historico(session_id: str, input_usuario: str):
 
     # Histórico da sessão
     historico_db = obter_historico_chat(session_id, limit=8)
-
     for msg in historico_db:
         role = "user" if msg["type"] == "human" else "model"
         mensagens.append({
@@ -101,9 +94,7 @@ def construir_historico(session_id: str, input_usuario: str):
         "role": "user",
         "content": input_usuario
     })
-
     return mensagens
-
 
 # =====================================================
 # RESPOSTA GEMINI (CORRIGIDA)
@@ -114,25 +105,13 @@ def responder_com_gemini(
     session_id: str,
     username: str | None = None
 ) -> str:
-    """
-    session_id -> CONTEXTO
-    username   -> LOG / AUDITORIA
-    """
-
     global client
-
     if client is None:
         if not recarregar_llm():
-            return "❌ API do Gemini indisponível."
-
+            return "API do Gemini indisponível."
     try:
         mensagens = construir_historico(session_id, input_usuario)
-        
-        # Converter mensagens para o formato esperado pela nova API
-        # A nova API espera uma lista de dicionários com 'parts'
         contents = []
-        
-        # Adicionar mensagem do sistema separadamente se necessário
         system_prompt = None
         chat_messages = []
         
@@ -141,45 +120,34 @@ def responder_com_gemini(
                 system_prompt = msg["content"]
             else:
                 chat_messages.append(msg)
-        
-        # Criar o conteúdo para a API
         if system_prompt:
-            # Se houver system prompt, incluir na primeira mensagem
             contents.append({"role": "user", "parts": [f"System: {system_prompt}\n\nUsuário: {chat_messages[0]['content']}" if chat_messages else system_prompt]})
-            # Adicionar as demais mensagens
             for msg in chat_messages[1:]:
                 contents.append({"role": msg["role"], "parts": [msg["content"]]})
         else:
-            # Sem system prompt, usar mensagens normais
             for msg in chat_messages:
                 contents.append({"role": msg["role"], "parts": [msg["content"]]})
-        
-        # Chamada corrigida para a nova API
         response = client.models.generate_content(
             model=MODEL_NAME,
             contents=contents
         )
-        
         texto = response.text.strip()
 
         # Persistência POR SESSÃO
         adicionar_mensagem_chat(session_id, input_usuario, "human")
         adicionar_mensagem_chat(session_id, texto, "ai")
 
-        # Logs (opcional por usuário)
+        # Logs
         if username:
             registrar_log(username, f"[{session_id}] Pergunta: {input_usuario}")
             registrar_log(username, f"[{session_id}] Resposta: {texto}")
-
         return texto
-
     except Exception as e:
         erro = str(e)
-        print(f"❌ Erro detalhado Gemini: {erro}")  # Debug
+        print(f"Erro detalhado Gemini: {erro}")
         if username:
             registrar_log(username, f"[{session_id}] Erro Gemini: {erro}")
-        return f"❌ Erro ao processar com Gemini: {erro}"
-
+        return f"Erro ao processar com Gemini: {erro}"
 
 # Versão alternativa mais simples
 def responder_com_gemini_simples(
@@ -188,18 +156,15 @@ def responder_com_gemini_simples(
     username: str | None = None
 ) -> str:
     global client
-
     if client is None:
         if not recarregar_llm():
-            return "❌ API do Gemini indisponível."
-
+            return "API do Gemini indisponível."
     try:
         historico_db = obter_historico_chat(session_id, limit=6)
 
         prompt = (
             f"{obter_prompt_sistema()}\n\n"
         )
-
         for msg in reversed(historico_db):
             if msg["type"] == "human":
                 prompt += f"Usuário: {msg['message']}\n"
@@ -210,27 +175,23 @@ def responder_com_gemini_simples(
 
         response = client.models.generate_content(
             model=MODEL_NAME,
-            contents=prompt  # ✅ STRING
+            contents=prompt
         )
 
         texto = response.text.strip()
-
         adicionar_mensagem_chat(session_id, input_usuario, "human")
         adicionar_mensagem_chat(session_id, texto, "ai")
-
         if username:
             registrar_log(username, f"[{session_id}] Pergunta: {input_usuario}")
             registrar_log(username, f"[{session_id}] Resposta: {texto}")
-
         return texto
 
     except Exception as e:
         erro = str(e)
-        print(f"❌ Erro Gemini (simples): {erro}")
+        print(f"Erro Gemini (simples): {erro}")
         if username:
             registrar_log(username, f"[{session_id}] Erro Gemini: {erro}")
-        return f"❌ Erro ao processar com Gemini: {erro}"
-
+        return f"Erro ao processar com Gemini: {erro}"
 
 # =====================================================
 # STATUS
@@ -239,14 +200,12 @@ def responder_com_gemini_simples(
 def verificar_llm_disponivel():
     return client is not None
 
-
 def obter_status_api():
     if client is None:
         return {
             "disponivel": False,
             "mensagem": "API Key não configurada"
         }
-
     try:
         # Teste simples
         response = client.models.generate_content(
@@ -264,16 +223,10 @@ def obter_status_api():
             "mensagem": str(e)
         }
 
-
 # Função principal para uso externo
 def gerar_resposta_ia(input_usuario: str, session_id: str, username: str = None) -> str:
-    """
-    Função wrapper que escolhe a melhor implementação
-    """
-    # Tente a versão simples primeiro
     try:
         return responder_com_gemini_simples(input_usuario, session_id, username)
     except Exception as e:
-        print(f"⚠️ Erro na versão simples, tentando alternativa: {e}")
-        # Fallback para a versão original
+        print(f"Erro na versão simples, tentando alternativa: {e}")
         return responder_com_gemini(input_usuario, session_id, username)
