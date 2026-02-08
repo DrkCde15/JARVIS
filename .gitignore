@@ -1,5 +1,5 @@
 .env
 jenv
-data/
+*db
 *.txt
 .jarvis_session

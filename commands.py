@@ -17,17 +17,19 @@ from datetime import datetime
 import pandas as pd
 from PIL import Image
 from ai_service import (
-    MODEL_NAME,
+    gerar_resposta_ia,
     recarregar_llm,
     construir_historico,
-    gerar_resposta_ia
+    MODEL_NAME
+    
 )
 from memory import (
     adicionar_mensagem_chat,
     registrar_log,
     salvar_senha_smtp,
     obter_senha_smtp,
-    obter_session_id_por_token
+    obter_session_id_por_token,
+    limpar_memoria
 )
 import fitz
 from docx import Document
@@ -831,7 +833,7 @@ class ImageAnalyser:
 
         if self.client is None:
             if not recarregar_llm():
-                return "❌ Gemini indisponível."
+                return "❌ Neura indisponível."
 
             from ai_service import client
             self.client = client
@@ -1738,7 +1740,7 @@ def criar_codigo(match, username):
     try:
         codigo = gerar_resposta_ia(prompt, username)
     except Exception as e:
-        return f"Erro ao gerar código com Gemini: {e}"
+        return f"Erro ao gerar código com IA: {e}"
     extensoes = {
         "python": ".py",
         "javascript": ".js",
@@ -1896,10 +1898,7 @@ def analisar_arquivos(match, username):
     except Exception as e:
         return f"Erro ao analisar arquivo: {e}"
 
-# ========== Função fallback Gemini ==========
-def responder_com_gemini_fallback(match, username):
-    comando = match.group(0)
-    return gerar_resposta_ia(comando, username)
+
 
 # ========== Lista de comandos ==========
 padroes = [
@@ -1980,41 +1979,44 @@ padroes = [
     (re.compile(r'\/analisar\s+imagem\s+(.+)', re.IGNORECASE), 
      lambda m, u: analisar_imagem_comando(m.group(1).strip(), u)),
     
-     # Agenda
-    (re.compile(r'\/(?:ler|ver)\s+agenda\b', re.IGNORECASE), 
-    lambda m, u, modo='texto': listar_agenda(u, modo)),
-    (re.compile(r'\/agenda\s+hoje\b', re.IGNORECASE), 
-    lambda m, u, modo='texto': agenda_hoje(u, modo)),
-    (re.compile(r'\/adicionar\s+tarefa$', re.IGNORECASE), 
-    lambda m, u, modo='texto': adicionar_tarefa_interativa(m, u, modo)),
-    (re.compile(r'\/marcar\s+(?:como\s+)?concluida\s+(.+)', re.IGNORECASE), 
-    lambda m, u, modo='texto': marcar_como_concluida_comando(m, u, modo)),
-    (re.compile(r'\/remover\s+tarefa\s+(.+)', re.IGNORECASE), 
-    lambda m, u, modo='texto': remover_tarefa_comando(m, u, modo)),
-    (re.compile(r'\/limpar\s+agenda\b', re.IGNORECASE), 
-    lambda m, u, modo='texto': limpar_agenda_completa(u, modo)),
-    (re.compile(r'\/editar\s+tarefa\b', re.IGNORECASE), 
-    lambda m, u, modo='texto': editar_tarefa(m, u, modo)),
-    (re.compile(r'\/tarefas\s+atrasadas\b', re.IGNORECASE), 
-    lambda m, u, modo='texto': checar_tarefas_atrasadas(u, modo)),
-    (re.compile(r'\/inicializar\s+agenda\b', re.IGNORECASE), 
-    lambda m, u, modo='texto': inicializar_sistema_agenda(u)),
-    
-    # Sistema
-    (re.compile(r'\/verificar\s+atualizacoes\b', re.IGNORECASE), verificar_atualizacoes),
-    (re.compile(r'\/atualizar\s+sistema\b', re.IGNORECASE), atualizar_sistema),
-    (re.compile(r'\/limpar\s+lixo\b', re.IGNORECASE), limpar_lixo),
-    
-    # Data e hora
-    (re.compile(r'\/horas?\b', re.IGNORECASE), falar_hora),
-    (re.compile(r'\/data\b', re.IGNORECASE), falar_data),
-    
-    # Arquivos
-    (re.compile(r'\/listar\s+arquivos(?:\s+\.(\w+))?(?:\s+em\s+(.+))?', re.IGNORECASE), listar_arquivos),
-    (re.compile(r'\/criar\s+(?:arquivo\s+)?texto\b', re.IGNORECASE), criar_arquivo),
-    (re.compile(r'\/criar\s+codigo\b', re.IGNORECASE), criar_codigo),
-]
-
+          # Agenda
+         (re.compile(r'\/(?:ler|ver)\s+agenda\b', re.IGNORECASE),
+         lambda m, u, modo='texto': listar_agenda(u, modo)),
+         (re.compile(r'\/agenda\s+hoje\b', re.IGNORECASE),
+         lambda m, u, modo='texto': agenda_hoje(u, modo)),
+         (re.compile(r'\/adicionar\s+tarefa$', re.IGNORECASE),
+         lambda m, u, modo='texto': adicionar_tarefa_interativa(m, u, modo)),
+         (re.compile(r'\/marcar\s+(?:como\s+)?concluida\s+(.+)', re.IGNORECASE),
+         lambda m, u, modo='texto': marcar_como_concluida_comando(m, u, modo)),
+         (re.compile(r'\/remover\s+tarefa\s+(.+)', re.IGNORECASE),
+         lambda m, u, modo='texto': remover_tarefa_comando(m, u, modo)),
+         (re.compile(r'\/limpar\s+agenda\b', re.IGNORECASE),
+         lambda m, u, modo='texto': limpar_agenda_completa(u, modo)),
+         (re.compile(r'\/editar\s+tarefa\b', re.IGNORECASE),
+         lambda m, u, modo='texto': editar_tarefa(m, u, modo)),
+         (re.compile(r'\/tarefas\s+atrasadas\b', re.IGNORECASE),
+         lambda m, u, modo='texto': checar_tarefas_atrasadas(u, modo)),
+         (re.compile(r'\/inicializar\s+agenda\b', re.IGNORECASE),
+         lambda m, u, modo='texto': inicializar_sistema_agenda(u)),
+         
+         # Memória
+         (re.compile(r'\/limpar\s+memoria\b', re.IGNORECASE),
+          lambda m, u, modo='texto': limpar_memoria(u)),
+     
+         # Sistema
+         (re.compile(r'\/verificar\s+atualizacoes\b', re.IGNORECASE), verificar_atualizacoes),
+         (re.compile(r'\/atualizar\s+sistema\b', re.IGNORECASE), atualizar_sistema),
+         (re.compile(r'\/limpar\s+lixo\b', re.IGNORECASE), limpar_lixo),
+         
+         # Data e hora
+         (re.compile(r'\/horas?\b', re.IGNORECASE), falar_hora),
+         (re.compile(r'\/data\b', re.IGNORECASE), falar_data),
+         
+         # Arquivos
+         (re.compile(r'\/listar\s+arquivos(?:\s+\.(\w+))?(?:\s+em\s+(.+))?', re.IGNORECASE), listar_arquivos),
+         (re.compile(r'\/criar\s+(?:arquivo\s+)?texto\b', re.IGNORECASE), criar_arquivo),
+         (re.compile(r'\/criar\s+codigo\b', re.IGNORECASE), criar_codigo),
+     ]
 # Variável global para modo
 modo = 'texto'
 

@@ -125,6 +125,8 @@ def exibir_banner_comandos():
             "/verificar atualizacoes   - Busca por updates do JARVIS",
             "/atualizar sistema        - Executa rotinas de atualização",
             "/horas | /data            - Informa data e hora atual"
+        ]),
+        (Colors.YELLOW, "🗑 LIMPEZA DE MEMÓRIA", ["/limpar memoria  - Limpa a memória da IA"
         ])
     ]
     for cor, categoria, itens in comandos:

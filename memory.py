@@ -396,6 +396,57 @@ def obter_historico_chat(session_id: str, limit: int = 10):
     )
     return list(reversed(rows)) if rows else []
 
+def adicionar_mensagem_chat(session_id: str, message: str, msg_type: str):
+    """Adiciona uma nova interação ao banco MySQL."""
+    executar_query(
+        """
+        INSERT INTO message_store (id, session_id, message, type)
+        VALUES (%s,%s,%s,%s)
+        """,
+        (str(uuid.uuid4()), session_id, message, msg_type),
+        commit=True,
+    )
+
+def obter_historico_chat(session_id: str, limit: int = 10):
+    """Recupera as últimas mensagens para contexto da IA."""
+    rows = executar_query(
+        """
+        SELECT message, type, timestamp
+        FROM message_store
+        WHERE session_id=%s
+        ORDER BY timestamp DESC
+        LIMIT %s
+        """,
+        (session_id, limit),
+        fetch=True,
+    )
+    return list(reversed(rows)) if rows else []
+
+def limpar_memoria(session_id):
+    """
+    Apaga o histórico da tabela message_store no MySQL para a sessão atual.
+    """
+    try:
+        # Removida a verificação estrita de 'verificar_sessao_valida' 
+        # para permitir a limpeza mesmo em sessões recém-criadas ou locais.
+        
+        # Executa a deleção
+        resultado = executar_query(
+            "DELETE FROM message_store WHERE session_id = %s",
+            (session_id,),
+            commit=True
+        )
+        
+        # O MySQL retorna True ou o número de linhas, tratamos como sucesso
+        if resultado is not None:
+            return "✅ Memória de curto prazo apagada dos núcleos MySQL, Senhor."
+        else:
+            return "⚠️ Senhor, não encontrei registros para esta sessão ou houve um erro no SQL."
+
+    except Exception as e:
+        print(f"❌ Erro MySQL detalhado: {e}")
+        return f"❌ Erro ao acessar núcleos de memória MySQL: {e}"
+
 # =====================================================
 # LOG
 # =====================================================
