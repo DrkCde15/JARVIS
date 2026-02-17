@@ -1,46 +1,45 @@
-# 🤖 J.A.R.V.I.S — System Assistant v4.0.0
+# 🤖 J.A.R.V.I.S — System Assistant v4.1.0
 
 <p align="center">
   <img src="https://img.shields.io/badge/Engine-Neura_AI-blueviolet?style=for-the-badge" alt="Neura AI">
-  <img src="https://img.shields.io/badge/UI-Neon_Premium-cyan?style=for-the-badge" alt="Neon UI">
+  <img src="https://img.shields.io/badge/UI-CustomTkinter_Neon-cyan?style=for-the-badge" alt="CustomTkinter UI">
   <img src="https://img.shields.io/badge/Language-Python-blue?style=for-the-badge" alt="Python">
+  <img src="https://img.shields.io/badge/Status-Modern_GUI-green?style=for-the-badge" alt="Status">
 </p>
 
 ---
 
 ## 🌌 Visão Geral
 
-O **JARVIS** evoluiu. Deixando para trás as limitações de assistentes convencionais, a versão 4.0 introduz uma arquitetura modular robusta, uma interface visual **Neon-Premium** e o poderoso motor **Neura AI**.
-
-Agora, o JARVIS não apenas executa comandos; ele entende suas **intenções**. Através de processamento de linguagem natural avançado (NLP) e detecção de intenção (Intent Classification), você pode conversar de forma fluida, sem a necessidade de comandos rígidos ou prefixos obrigatórios.
+O **JARVIS** alcançou seu ápice visual e funcional. A versão 4.1 marca a transição definitiva do terminal para uma **Interface Gráfica de Usuário (GUI) Moderna**, construída com `CustomTkinter`. Combinando a estética **Neon-Premium** com o motor **Neura AI**, o JARVIS agora oferece uma experiência de software de última geração diretamente no seu desktop.
 
 ---
 
-## 💎 Diferenciais da Versão 4.0
+## 💎 Diferenciais da Versão 4.1 (GUI Epoch)
 
-### 🧠 Inteligência Superior (Neura Core)
+### 🖥️ Interface Neon-Premium (CustomTkinter)
 
-- **Processamento Multimodal**: Análise de imagens em tempo real usando visão computacional integrada ao cérebro Neura.
-- **Intent Classification**: O sistema distingue automaticamente entre uma conversa casual e um pedido de ação (ex: abrir sites, tocar música, ver agenda).
-- **Memória Persistente**: Integração total com **MySQL** para histórico de chat, sessões JWT e logs de auditoria.
+- **Design Futurista**: Janelas com transparência simulada, acentos em Ciano Neon e Roxo, e fontes otimizadas para leitura técnica.
+- **Arquitetura Assíncrona**: O núcleo do sistema opera em threads separadas, garantindo que a interface permaneça fluida enquanto a IA processa grandes volumes de dados.
+- **Dashboard Interativo**: Barra lateral com botões dinâmicos que solicitam entradas do usuário (Site, Música, Agenda).
 
-### 🎨 Experiência do Usuário (Premium CLI)
+### 🧠 Inteligência & Conveniência
 
-- **Interface Neon**: Design inspirado em alta tecnologia com gradientes dinâmicos, molduras Unicode e spinners de processamento.
-- **Alinhamento Inteligente**: A interface se adapta automaticamente à largura do seu terminal, garantindo centralização e estética limpa.
-- **Modo Silencioso e Voz**: Escolha entre interagir via texto puro no Neura Core ou via interface de voz completa.
+- **Fichário de Comandos Inteligente**: Classificação de intenções (NLP) para distinguir entre dúvidas de conhecimento e ordens operacionais.
+- **Persistent Auth**: Uma vez logado, o sistema lembra do operador, permitindo acesso instantâneo em sessões futuras sem necessidade de re-autenticação manual.
+- **Multimodalidade Direta**: Botões dedicados para **Upload de Arquivos/Imagens** (`+`) e **Interação por Voz** (`🎤`) integrados na barra de chat.
 
 ---
 
 ## 🚀 Funcionalidades Principais
 
-| Módulo              | Descrição                                                                                                             |
-| :------------------ | :-------------------------------------------------------------------------------------------------------------------- |
-| **🌐 Media & Web**  | Reprodução via YouTube, Pesquisa Google, Download de Vídeo/Áudio (yt-dlp) e Navegação Inteligente.                    |
-| **🔍 AI Analysis**  | Raspagem e resumo de sites, codificação automática em múltiplas linguagens e análise de documentos (PDF, DOCX, XLSX). |
-| **📅 Smart Agenda** | Gerenciamento completo de tarefas com banco de dados, alertas de prazos e visualização diária.                        |
-| **💻 System Utils** | Instalação/Desinstalação de apps via terminal, limpeza de cache, controle de gravação de tela e info do sistema.      |
-| **📧 Comms**        | Automação avançada para WhatsApp (Mensagens Individuais, Grupos e Agendamento) e E-mail.                              |
+| Módulo                 | Chat & GUI Capabilities                                                                            |
+| :--------------------- | :------------------------------------------------------------------------------------------------- |
+| **🌐 Media & Web**     | Pesquisa e reprodução instantânea via diálogos interativos ou comandos de voz.                     |
+| **🔍 Vision & Docs**   | Upload direto de imagens para análise via Cérebro Neura e leitura de documentos (PDF, XLSX, etc.). |
+| **📅 Smart Agenda**    | Visualização de tarefas integrada ao chat e gerenciamento de compromissos em tempo real.           |
+| **💻 System Utils**    | Monitoramento de rede (IP Local/Público) e controle de software via interface gráfica.             |
+| **📧 Auth & Security** | Sistema de login persistente com criptografia e armazenamento seguro de tokens locais.             |
 
 ---
 
@@ -50,7 +49,7 @@ Agora, o JARVIS não apenas executa comandos; ele entende suas **intenções**. 
 
 - Python 3.10+
 - Servidor MySQL ativo
-- Ambiente Neura AI configurado (Ollama/Neura Tunnel)
+- Bibliotecas gráficas (CustomTkinter, Pillow)
 
 ### 2️⃣ Setup Rápido
 
@@ -58,30 +57,29 @@ Agora, o JARVIS não apenas executa comandos; ele entende suas **intenções**. 
 # Clone o repositório
 git clone https://github.com/DrkCde15/JARVIS.git
 
-# Crie e ative o ambiente virtual
-python -m venv venv
-source venv/bin/activate  # venv\Scripts\activate no Windows
+# Configure o ambiente virtual (Recomendado: jenv)
+python -m venv jenv
+.\jenv\Scripts\activate
 
-# Instale as dependências
+# Instale as dependências unificadas
 pip install -r requirements.txt
 ```
 
 ### 3️⃣ Execução
 
+Para garantir o uso do motor gráfico correto:
+
 ```bash
-python main.py
+.\jenv\Scripts\python.exe main.py
 ```
 
 ---
 
-## 🛠️ Arquitetura Modular
+## 🛠️ Nova Estrutura GUI
 
-O projeto agora é organizado em sub-módulos para máxima escalabilidade:
-
-- `commands/`: Pacote contendo lógica de agenda, mídia, arquivos, sistema e IA.
-- `memory.py`: Camada de persistência MySQL e segurança.
-- `ai_service.py`: Interface de conexão com o Neura Engine.
-- `intent_manager.py`: O classificador de intenções em linguagem natural.
+- `main.py`: Agora atua como o **Orquestrador de Interface**, gerenciando janelas, threads de processamento e estados de login.
+- `commands/system_utils.py`: Inclui novas rotinas de monitoramento de rede (IPv4/IPv6).
+- `intent_manager.py`: Refinado para diferenciar dúvidas de carreira/estudos de comandos operacionais.
 
 ---
 
@@ -90,4 +88,3 @@ O projeto agora é organizado em sub-módulos para máxima escalabilidade:
 **Júlio Cesar**  
 📧 [jcesarsantana215@gmail.com](mailto:jcesarsantana215@gmail.com)  
 🔗 [LinkedIn](https://www.linkedin.com/in/julio-santana-ads/)
-

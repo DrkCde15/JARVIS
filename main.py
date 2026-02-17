@@ -1,10 +1,7 @@
 import os
-import sys
-import getpass
-import time
-import shutil
+import threading
+import customtkinter as ctk
 from commands import processar_comando
-from commands.constants import Colors
 from memory import (
     criar_usuario, 
     autenticar_usuario, 
@@ -13,17 +10,15 @@ from memory import (
     adicionar_mensagem_chat, 
     obter_historico_chat,
     logout_usuario, 
-    invalidar_sessoes_usuario,
-    listar_sessoes_ativas,
-    atualizar_senha_usuario,
-    atualizar_username_usuario, 
     verificar_usuario_existe,
-    verificar_token,
     verificar_autenticacao_persistente
 )
 
-# ================== CONFIGURAÇÃO DE PERSISTÊNCIA LOCAL ==================
+# Configurações de Aparência CustomTkinter
+ctk.set_appearance_mode("Dark")
+ctk.set_default_color_theme("blue")
 
+# ================== CONFIGURAÇÃO DE PERSISTÊNCIA LOCAL ==================
 SESSION_FILE = ".jarvis_session"
 
 def salvar_login_local(username, token):
@@ -42,241 +37,279 @@ def limpar_login_local():
     if os.path.exists(SESSION_FILE):
         os.remove(SESSION_FILE)
 
-# ================== UI ENHANCEMENTS ==================
+# ================== INTERFACE GRÁFICA (GUI) ==================
 
-def limpar_tela():
-    os.system('cls' if os.name == 'nt' else 'clear')
+from tkinter import filedialog
 
-def draw_header(title):
-    terminal_size = shutil.get_terminal_size((80, 20))
-    width = terminal_size.columns
-    print(f"\n{Colors.NEON_CYAN}{Colors.CORNER_TL}{Colors.LINE_H * (width - 2)}{Colors.CORNER_TR}")
-    print(f"{Colors.BAR} {Colors.BOLD}{title.center(width - 4)} {Colors.BAR}")
-    print(f"{Colors.CORNER_BL}{Colors.LINE_H * (width - 2)}{Colors.CORNER_BR}{Colors.RESET}")
-
-def mostrar_banner_principal():
-    banner = [
-        r"      ___           ___           ___           ___           ___           ___     ",
-        r"     /\  \         /\  \         /\  \         /\__\         /\  \         /\  \    ",
-        r"     \:\  \       /::\  \       /::\  \       /:/  /        /::\  \       /::\  \   ",
-        r"      \:\  \     /:/\:\  \     /:/\:\  \     /:/  /        /:/\:\  \     /:/\ \  \  ",
-        r"      /::\  \   /::/::\  \    /::/::\  \   /:/__/  ___    /::\~\:\  \   _\:\~\ \  \ ",
-        r"     /:/\:\__\ /:/:/\:\__\  /:/:/\:\__\  |:|  |  /\__\  /:/\:\ \:\__\ /\ \:\ \ \__/",
-        r"    /:/  \/__/ \/__/:/  /   \::/__/:/  /  |:|  | /:/  /  \/__/\:\/:/  / \:\ \:\ \/__/",
-        r"   /:/  /        /:/  /     \:\  \:/  /   |:|  |/:/  /        \::/  /   \:\ \:\__\  ",
-        r"   \/__/         \/__/       \:\__/__/    |:|__/:/  /         /:/  /     \:\/:/  /  ",
-        r"                              \/__/        \____/__/          \/__/       \::/  /   ",
-        r"                                                                           \/__/    "
-    ]
-    
-    colors_gradient = [
-        (0, 255, 255),  # Cyan
-        (176, 38, 255)  # Purple
-    ]
-    
-    print()
-    for line in banner:
-        print(Colors.gradient_text(line.center(shutil.get_terminal_size().columns), colors_gradient[0], colors_gradient[1]))
-    
-    version_str = "SYSTEM CORE v4.0.0 | NEURA ENGINE"
-    print(f"{Colors.GRAY}{version_str.center(shutil.get_terminal_size().columns)}{Colors.RESET}\n")
-
-def exibir_banner_comandos():
-    """Exibe o inventário COMPLETO de comandos com layout premium."""
-    width = 80
-    print(f"\n{Colors.NEON_CYAN}{Colors.CORNER_TL}{Colors.LINE_H * (width - 2)}{Colors.CORNER_TR}")
-    print(f"{Colors.BAR} {Colors.BOLD}{'CENTRAL DE COMANDOS'.center(width - 4)} {Colors.BAR}")
-    print(f"{Colors.T_LEFT}{Colors.LINE_H * (width - 2)}{Colors.T_RIGHT}{Colors.RESET}")
-    
-    comandos = [
-        ("📧 COMUNICAÇÃO", [
-            "/email", "/whatsapp", "/whatsapp grupo", "/whatsapp agendado"
-        ], Colors.NEON_PINK),
-        ("🌐 WEB & PESQUISA", [
-            "/tocar [termo]", "/pesquisar [termo]", "/listar sites", "/abrir [site]", "/baixar video", "/baixar audio"
-        ], Colors.NEON_CYAN),
-        ("💻 SISTEMA", [
-            "/listar apps", "/info app", "/abrir [app]", "/instalar", "/desinstalar", "/limpar lixo"
-        ], Colors.NEON_GREEN),
-        ("📅 AGENDA", [
-            "/ver agenda", "/agenda hoje", "/adicionar tarefa", "/editar tarefa", "/marcar concluida"
-        ], Colors.YELLOW),
-        ("🔍 AI & ANÁLISES", [
-            "/analisar arquivo", "/analisar site", "/analisar imagem", "/criar codigo"
-        ], Colors.NEON_PURPLE),
-    ]
-
-    for cat, itens, cor in comandos:
-        print(f"{Colors.BAR} {cor}{Colors.BOLD}{cat:<76}{Colors.RESET} {Colors.BAR}")
-        for chunk in [itens[i:i + 2] for i in range(0, len(itens), 2)]:
-            line = "  ".join([f"{Colors.WHITE}{item:<36}" for item in chunk])
-            print(f"{Colors.BAR} {line:<76} {Colors.BAR}")
-        print(f"{Colors.BAR} {' ' * 76} {Colors.BAR}")
-
-    print(f"{Colors.CORNER_BL}{Colors.LINE_H * (width - 2)}{Colors.CORNER_BR}{Colors.RESET}\n")
-    
-def mostrar_spinner(msg, duracao=0.6):
-    frames = ['⣾', '⣽', '⣻', '⢿', '⡿', '⣟', '⣯', '⣷']
-    end = time.time() + duracao
-    i = 0
-    while time.time() < end:
-        print(f"\r{Colors.NEON_CYAN}{frames[i%8]}{Colors.RESET} {msg}...", end="", flush=True)
-        time.sleep(0.08)
-        i += 1
-    print("\r" + Colors.CLEAR_LINE, end="")
-
-# ================== GERENCIADOR DE SESSÃO ==================
-class SessionManager:
+class JarvisApp(ctk.CTk):
     def __init__(self):
+        super().__init__()
+
+        self.title("J.A.R.V.I.S — System Assistant v4.0.0")
+        self.geometry("1100x700")
+        
+        # Session Data
         self.username = None
         self.token = None
         self.session_id = None
 
-    def iniciar(self, username, token):
+        # Layout Principal
+        self.grid_columnconfigure(0, weight=1)
+        self.grid_rowconfigure(0, weight=1)
+
+        # Inicialização (Tenta auto-login se existir sessão válida)
+        self.show_login_screen()
+        self.check_auto_login()
+
+    def check_auto_login(self):
+        u, t = carregar_login_local()
+        if u and t and verificar_autenticacao_persistente(t):
+            self.login_success(u, t)
+
+    def show_login_screen(self):
+        if hasattr(self, 'main_frame') and self.main_frame:
+            self.main_frame.destroy()
+        self.login_frame = LoginFrame(self, self.login_success)
+        self.login_frame.grid(row=0, column=0, sticky="nsew")
+
+    def login_success(self, username, token):
         self.username = username
         self.token = token
         self.session_id = obter_session_id_por_token(token)
         if not self.session_id:
             self.session_id = criar_sessao(username, token)
+        
+        salvar_login_local(username, token)
+        
+        if hasattr(self, 'login_frame'):
+            self.login_frame.destroy()
+        
+        self.main_frame = MainFrame(self, self.username, self.logout)
+        self.main_frame.grid(row=0, column=0, sticky="nsew")
 
-# ================== MODOS DE OPERAÇÃO =================
+    def logout(self):
+        logout_usuario(self.username, self.token)
+        limpar_login_local()
+        self.username = None
+        self.token = None
+        self.show_login_screen()
 
-def modo_texto(session: SessionManager):
-    limpar_tela()
-    mostrar_banner_principal()
-    print(f"{Colors.GRAY}Digite {Colors.NEON_CYAN}/comandos{Colors.GRAY} para ajuda ou {Colors.RED}/sair{Colors.GRAY}.{Colors.RESET}\n")
-    
-    largura_caixa = 70
+class LoginFrame(ctk.CTkFrame):
+    def __init__(self, master, login_callback):
+        super().__init__(master, fg_color="#0A0A0A")
+        self.login_callback = login_callback
 
-    while True:
-        try:
-            # UI Box para o Chat
-            print(f"{Colors.NEON_CYAN}{Colors.CORNER_TL}{Colors.LINE_H * (largura_caixa - 2)}{Colors.CORNER_TR}")
-            print(f"{Colors.BAR} {Colors.NEON_PINK}➤{' ' * (largura_caixa - 5)}{Colors.BAR}")
-            print(f"{Colors.CORNER_BL}{Colors.LINE_H * (largura_caixa - 2)}{Colors.CORNER_BR}{Colors.RESET}")
+        self.grid_columnconfigure(0, weight=1)
+        self.grid_rowconfigure((0, 5), weight=1)
 
-            # Cursor Management
-            sys.stdout.write("\033[2A\033[5C")
-            sys.stdout.flush()
+        # Botão de Registro (Novo)
+        self.reg_btn = ctk.CTkButton(self, text="CRIAR CONTA", command=self.show_register, 
+                                     fg_color="transparent", border_width=1, border_color="#00FFFF", width=120)
+        self.reg_btn.grid(row=0, column=0, sticky="ne", padx=20, pady=20)
 
-            comando = input().strip()
-            
-            sys.stdout.write("\033[1B\r")
-            sys.stdout.flush()
+        # Estilo Neon
+        self.title_label = ctk.CTkLabel(self, text="J.A.R.V.I.S", font=ctk.CTkFont(size=50, weight="bold"), text_color="#00FFFF")
+        self.title_label.grid(row=1, column=0, pady=(0, 5))
 
-            if not comando: continue
-            if comando.lower() == "/sair": break
-            
-            if comando.lower() == "/comandos":
-                exibir_banner_comandos()
-                continue
+        self.subtitle = ctk.CTkLabel(self, text="ADVANCED SYSTEM ASSISTANT", font=ctk.CTkFont(size=12), text_color="#B026FF")
+        self.subtitle.grid(row=2, column=0, pady=(0, 40))
 
-            if not verificar_autenticacao_persistente(session.token):
-                print(f"\n{Colors.RED}❗ Sessão expirada.{Colors.RESET}")
-                limpar_login_local()
-                return "expired"
+        # Container Central
+        self.form = ctk.CTkFrame(self, fg_color="transparent")
+        self.form.grid(row=3, column=0)
 
-            mostrar_spinner("Processando") 
-            resposta = processar_comando(
-                comando=comando,
-                username=session.username,
-                token=session.token,
-                modo="texto"
-            )
+        self.user_entry = ctk.CTkEntry(self.form, placeholder_text="LOGIN", width=320, height=50, border_color="#00FFFF", fg_color="#1A1A1A")
+        self.user_entry.pack(pady=10)
 
-            if resposta:
-                print(f"\n{Colors.NEON_CYAN}{Colors.BOLD}JARVIS:{Colors.RESET} {resposta}\n")
-                adicionar_mensagem_chat(session.session_id, comando, "user")
-                adicionar_mensagem_chat(session.session_id, resposta, "assistant")
+        self.pass_entry = ctk.CTkEntry(self.form, placeholder_text="SENHA", show="*", width=320, height=50, border_color="#00FFFF", fg_color="#1A1A1A")
+        self.pass_entry.pack(pady=10)
 
-        except KeyboardInterrupt:
-            break
+        self.login_btn = ctk.CTkButton(self.form, text="ENTRAR", command=self.do_login, width=320, height=50, 
+                                       fg_color="#B026FF", hover_color="#8A1FCC", font=ctk.CTkFont(weight="bold"))
+        self.login_btn.pack(pady=25)
 
-# ================== LOOP PRINCIPAL ==================
+        self.status_label = ctk.CTkLabel(self, text="STATUS: AGUARDANDO AUTENTICAÇÃO", font=ctk.CTkFont(size=10), text_color="gray")
+        self.status_label.grid(row=4, column=0, pady=20)
 
-def main():
-    session = SessionManager()
-    
-    u_salvo, t_salvo = carregar_login_local()
-    if u_salvo and t_salvo:
-        if verificar_autenticacao_persistente(t_salvo):
-            session.iniciar(u_salvo, t_salvo)
+    def do_login(self):
+        u = self.user_entry.get()
+        p = self.pass_entry.get()
+        token, _ = autenticar_usuario(u, p)
+        if token:
+            self.login_callback(u, token)
         else:
-            limpar_login_local()
+            self.status_label.configure(text="STATUS: FALHA NA AUTENTICAÇÃO", text_color="red")
 
-    while True:
-        term_width = shutil.get_terminal_size().columns
-        if not session.token:
-            limpar_tela()
-            mostrar_banner_principal()
-            
-            width = 44
-            padding = (term_width - width) // 2
-            indent = " " * padding
-            
-            print(f"{indent}{Colors.NEON_CYAN}{Colors.CORNER_TL}{Colors.LINE_H * (width - 2)}{Colors.CORNER_TR}")
-            print(f"{indent}{Colors.BAR} {Colors.WHITE}1. {Colors.BOLD}ACESSO AO SISTEMA{' ' * (width - 21)} {Colors.BAR}")
-            print(f"{indent}{Colors.BAR} {Colors.WHITE}2. {Colors.BOLD}NOVO REGISTRO{' ' * (width - 17)} {Colors.BAR}")
-            print(f"{indent}{Colors.BAR} {Colors.RED}3. {Colors.BOLD}DESLIGAR{' ' * (width - 13)} {Colors.BAR}")
-            print(f"{indent}{Colors.CORNER_BL}{Colors.LINE_H * (width - 2)}{Colors.CORNER_BR}{Colors.RESET}")
-            
-            op = input(f"\n{Colors.NEON_CYAN}{' ' * (term_width // 2 - 12)}JARVIS {Colors.BAR} SELEÇÃO > {Colors.RESET}").strip()
-            
-            if op == "3": sys.exit(0)
-            if op == "2":
-                reg_title = "--- REGISTRO DE USUÁRIO ---"
-                print(f"\n{Colors.BOLD}{reg_title.center(term_width)}{Colors.RESET}")
-                u = input(f"{' ' * (term_width // 2 - 10)}{Colors.GRAY}Usuário: {Colors.RESET}").strip()
-                if verificar_usuario_existe(u): 
-                    print(f"\n{Colors.RED}{'❌ Usuário já cadastrado!'.center(term_width)}{Colors.RESET}")
-                    time.sleep(1.5); continue
-                p = getpass.getpass(f"{' ' * (term_width // 2 - 10)}{Colors.GRAY}Senha: {Colors.RESET}")
+    def show_register(self):
+        # Janela de diálogo para registro rápido
+        dialog = ctk.CTkInputDialog(text="Digite o novo nome de usuário:", title="Registro")
+        u = dialog.get_input()
+        if u:
+            if verificar_usuario_existe(u):
+                self.status_label.configure(text="STATUS: USUÁRIO JÁ EXISTE", text_color="orange")
+                return
+            dialog_p = ctk.CTkInputDialog(text="Digite a senha para o novo usuário:", title="Registro")
+            p = dialog_p.get_input()
+            if p:
                 criar_usuario(u, p)
-                print(f"\n{Colors.NEON_GREEN}{'✓ Conta criada com sucesso!'.center(term_width)}{Colors.RESET}")
-                time.sleep(1.5)
-                continue
-            
-            auth_title = "--- AUTENTICAÇÃO ---"
-            print(f"\n{Colors.BOLD}{auth_title.center(term_width)}{Colors.RESET}")
-            u = input(f"{' ' * (term_width // 2 - 10)}{Colors.GRAY}Usuário: {Colors.RESET}").strip()
-            p = getpass.getpass(f"{' ' * (term_width // 2 - 10)}{Colors.GRAY}Senha: {Colors.RESET}")
-            
-            mostrar_spinner("Autenticando")
-            t, sid = autenticar_usuario(u, p)
-            if t:
-                salvar_login_local(u, t)
-                session.iniciar(u, t)
+                self.status_label.configure(text="STATUS: CONTA CRIADA! FAÇA LOGIN", text_color="green")
+
+class MainFrame(ctk.CTkFrame):
+    def __init__(self, master, username, logout_callback):
+        super().__init__(master, fg_color="#050505")
+        self.master = master
+        self.username = username
+        self.logout_callback = logout_callback
+
+        self.grid_columnconfigure(1, weight=1)
+        self.grid_rowconfigure(0, weight=1)
+
+        # Sidebar Lateral
+        self.sidebar = ctk.CTkFrame(self, width=240, corner_radius=0, fg_color="#0A0A0A", border_color="#1A1A1A", border_width=1)
+        self.sidebar.grid(row=0, column=0, sticky="nsew")
+        self.sidebar.grid_propagate(False)
+
+        self.logo = ctk.CTkLabel(self.sidebar, text="JARVIS Core", font=ctk.CTkFont(size=20, weight="bold"), text_color="#00FFFF")
+        self.logo.pack(pady=40)
+
+        self.info_box = ctk.CTkFrame(self.sidebar, fg_color="#151515", corner_radius=10)
+        self.info_box.pack(padx=20, pady=10, fill="x")
+        
+        ctk.CTkLabel(self.info_box, text="OPERADOR ATIVO", font=ctk.CTkFont(size=10), text_color="gray").pack(pady=(10, 0))
+        self.user_lbl = ctk.CTkLabel(self.info_box, text=self.username.upper(), font=ctk.CTkFont(size=14, weight="bold"), text_color="#B026FF")
+        self.user_lbl.pack(pady=(0, 10))
+
+        # Menu
+        self.create_side_btn("🌐 Abrir Site", lambda: self.open_site_dialog())
+        self.create_side_btn("📻 Tocar Música", lambda: self.play_music_dialog())
+        self.create_side_btn("📅 Ver Agenda", lambda: self.quick_cmd("ver agenda"))
+
+        self.logout_btn = ctk.CTkButton(self.sidebar, text="ENCERRAR SESSÃO", command=self.logout_callback, 
+                                        fg_color="transparent", border_width=1, border_color="#FF3333", text_color="#FF3333")
+        self.logout_btn.pack(side="bottom", pady=30, padx=20, fill="x")
+
+        # Chat
+        self.center_area = ctk.CTkFrame(self, fg_color="transparent")
+        self.center_area.grid(row=0, column=1, sticky="nsew", padx=20, pady=20)
+        self.center_area.grid_columnconfigure(0, weight=1)
+        self.center_area.grid_rowconfigure(0, weight=1)
+
+        self.chat_display = ctk.CTkTextbox(self.center_area, fg_color="#0D0D0D", border_color="#1A1A1A", border_width=1, 
+                                          font=("Consolas", 14), corner_radius=15, text_color="#E0E0E0")
+        self.chat_display.grid(row=0, column=0, sticky="nsew", pady=(0, 20))
+        self.chat_display.configure(state="disabled")
+
+        # Input Area (Nova com botões de Upload e Voz)
+        self.input_frame = ctk.CTkFrame(self.center_area, fg_color="transparent")
+        self.input_frame.grid(row=1, column=0, sticky="ew")
+        self.input_frame.grid_columnconfigure(1, weight=1)
+
+        # Botão Upload (Imagens/Documentos)
+        self.upload_btn = ctk.CTkButton(self.input_frame, text="+", width=50, height=55, fg_color="#1A1A1A", 
+                                        border_width=1, border_color="#B026FF", text_color="#B026FF", 
+                                        font=ctk.CTkFont(size=20, weight="bold"), command=self.upload_file)
+        self.upload_btn.grid(row=0, column=0, padx=(0, 10))
+
+        self.entry = ctk.CTkEntry(self.input_frame, placeholder_text="Fale ou digite um comando...", height=55, 
+                                 border_color="#B026FF", fg_color="#0D0D0D", font=("Segoe UI", 14))
+        self.entry.grid(row=0, column=1, sticky="ew", padx=(0, 10))
+        self.entry.bind("<Return>", lambda e: self.send_command())
+
+        # Botão Voz
+        self.voice_btn = ctk.CTkButton(self.input_frame, text="🎤", width=50, height=55, fg_color="#1A1A1A", 
+                                       border_width=1, border_color="#00FFFF", text_color="#00FFFF", 
+                                       font=ctk.CTkFont(size=20), command=self.start_voice_mode)
+        self.voice_btn.grid(row=0, column=2, padx=(0, 10))
+
+        self.send_btn = ctk.CTkButton(self.input_frame, text="▶", width=80, height=55, command=self.send_command,
+                                     fg_color="#00FFFF", text_color="black", font=ctk.CTkFont(weight="bold"))
+        self.send_btn.grid(row=0, column=3)
+
+        self.log_event("Sinal de rede estável. Núcleo v4.0.0 em prontidão.")
+
+    def create_side_btn(self, text, command_fn):
+        btn = ctk.CTkButton(self.sidebar, text=text, anchor="w", fg_color="transparent", 
+                           hover_color="#151515", text_color="#D0D0D0", command=command_fn)
+        btn.pack(padx=15, pady=2, fill="x")
+
+    def open_site_dialog(self):
+        dialog = ctk.CTkInputDialog(text="Qual site o senhor deseja abrir?", title="Abrir Site")
+        site = dialog.get_input()
+        if site:
+            self.quick_cmd(f"abrir {site}")
+
+    def play_music_dialog(self):
+        dialog = ctk.CTkInputDialog(text="Qual música o senhor deseja ouvir?", title="Tocar Música")
+        musica = dialog.get_input()
+        if musica:
+            self.quick_cmd(f"tocar {musica}")
+
+    def quick_cmd(self, cmd):
+        self.entry.delete(0, "end")
+        self.entry.insert(0, cmd)
+        self.send_command()
+
+    def upload_file(self):
+        file_path = filedialog.askopenfilename(
+            title="Selecionar Arquivo",
+            filetypes=[("Todos os arquivos", "*.*"), ("Imagens", "*.png *.jpg *.jpeg"), ("Documentos", "*.pdf *.docx *.txt")]
+        )
+        if file_path:
+            self.entry.delete(0, "end")
+            # Se for imagem, formata comando de análise
+            ext = file_path.lower().split('.')[-1]
+            if ext in ['png', 'jpg', 'jpeg']:
+                self.entry.insert(0, f"analisar imagem {file_path}")
             else:
-                print(f"\n{Colors.RED}{'❌ Falha na autenticação.'.center(term_width)}{Colors.RESET}")
-                time.sleep(1.5); continue
+                self.entry.insert(0, f"analisar arquivo {file_path}")
+            self.send_command()
 
-        limpar_tela()
-        mostrar_banner_principal()
-        
-        width = 54
-        padding = (term_width - width) // 2
-        indent = " " * padding
-        
-        print(f"{indent}{Colors.NEON_CYAN}{Colors.CORNER_TL}{Colors.LINE_H * (width - 2)}{Colors.CORNER_TR}")
-        print(f"{indent}{Colors.BAR} {Colors.BOLD}OPERADOR: {Colors.NEON_PINK}{session.username.upper():<41}{Colors.RESET} {Colors.BAR}")
-        print(f"{indent}{Colors.T_LEFT}{Colors.LINE_H * (width - 2)}{Colors.T_RIGHT}")
-        print(f"{indent}{Colors.BAR} {Colors.WHITE}1. TERMINAL DE TEXTO (NEURA CORE){' ' * 17} {Colors.BAR}")
-        print(f"{indent}{Colors.BAR} {Colors.WHITE}2. INTERFACE DE VOZ{' ' * 31} {Colors.BAR}")
-        print(f"{indent}{Colors.BAR} {Colors.WHITE}3. LOGS DE SESSÃO{' ' * 33} {Colors.BAR}")
-        print(f"{indent}{Colors.BAR} {' ' * 52} {Colors.BAR}")
-        print(f"{indent}{Colors.BAR} {Colors.GRAY}Digite {Colors.BOLD}logout{Colors.RESET}{Colors.GRAY} para sair da conta{' ' * 18} {Colors.BAR}")
-        print(f"{indent}{Colors.CORNER_BL}{Colors.LINE_H * (width - 2)}{Colors.CORNER_BR}{Colors.RESET}")
+    def start_voice_mode(self):
+        self.log_event("Modo de voz ativado. Fale agora...", "#B026FF")
+        threading.Thread(target=self.voice_backend, daemon=True).start()
 
-        cmd = input(f"\n{Colors.NEON_CYAN}{' ' * (term_width // 2 - 12)}JARVIS {Colors.BAR} COMANDO > {Colors.RESET}").strip().lower()
+    def voice_backend(self):
+        # Aqui integraríamos com o comando_voz_interativo. 
+        # Por agora, simulamos a ativação do processamento de áudio.
+        from commands.voice import ouvir
+        audio_text = ouvir()
+        if audio_text:
+            self.master.after(0, lambda: self.process_voice_result(audio_text))
+        else:
+            self.master.after(0, lambda: self.log_event("Não consegui ouvir nada, senhor.", "orange"))
+
+    def process_voice_result(self, text):
+        self.chat_history_append("VOCÊ (VOZ)", text, "#B026FF")
+        threading.Thread(target=self.process_backend, args=(text,), daemon=True).start()
+
+    def log_event(self, msg, color="#00FFFF"):
+        self.chat_display.configure(state="normal")
+        self.chat_display.insert("end", f"\n[SYSTEM] {msg}\n", "system")
+        self.chat_display.tag_config("system", foreground=color)
+        self.chat_display.configure(state="disabled")
+        self.chat_display.see("end")
+
+    def send_command(self):
+        cmd = self.entry.get().strip()
+        if not cmd: return
         
-        if cmd == "1":
-            if modo_texto(session) == "expired": session.token = None
-        elif cmd == "logout":
-            mostrar_spinner("Encerrando sessão")
-            logout_usuario(session.username, session.token)
-            limpar_login_local()
-            session.token = None
-        elif cmd == "sair": sys.exit(0)
+        self.entry.delete(0, "end")
+        self.chat_history_append("VOCÊ", cmd, "#FF00FF")
+        
+        threading.Thread(target=self.process_backend, args=(cmd,), daemon=True).start()
+
+    def chat_history_append(self, author, text, color):
+        self.chat_display.configure(state="normal")
+        self.chat_display.insert("end", f"\n{author}: ", author)
+        self.chat_display.tag_config(author, foreground=color)
+        self.chat_display.insert("end", f"{text}\n")
+        self.chat_display.configure(state="disabled")
+        self.chat_display.see("end")
+
+    def process_backend(self, cmd):
+        res = processar_comando(cmd, self.username, self.master.token)
+        self.master.after(0, lambda: self.chat_history_append("JARVIS", res, "#00FFFF"))
 
 if __name__ == "__main__":
-    main()
+    app = JarvisApp()
+    app.mainloop()

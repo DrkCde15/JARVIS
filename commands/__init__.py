@@ -51,7 +51,8 @@ from commands.system_utils import (
     falar_hora,
     falar_data,
     iniciar_gravacao_sistema,
-    parar_gravacao_sistema
+    parar_gravacao_sistema,
+    obter_ip
 )
 from memory import (
     obter_session_id_por_token,
@@ -106,6 +107,7 @@ padroes = [
     # Sistema
     (re.compile(r'\/?(?:jarvis\s+)?(?:limpar\s+)?lixo\b', re.IGNORECASE), limpar_lixo),
     (re.compile(r'\/?(?:jarvis\s+)?(?:que\s+)?horas?\s+(?:são|é)\b', re.IGNORECASE), falar_hora),
+    (re.compile(r'\/?(?:jarvis\s+)?(?:qual\s+o\s+meu\s+)?ip\b', re.IGNORECASE), obter_ip),
     (re.compile(r'\/?(?:jarvis\s+)?(?:qual\s+a\s+)?data\b', re.IGNORECASE), falar_data),
 ]
 

@@ -51,6 +51,30 @@ def falar_data(match, username):
     falar(f"Hoje é dia {data}")
     return f"Hoje é dia {data}"
 
+import socket
+import requests
+
+def obter_ip(match, username):
+    try:
+        # IP Local
+        hostname = socket.gethostname()
+        ip_local = socket.gethostbyname(hostname)
+        
+        # IP Público (Externo)
+        try:
+            ip_publico = requests.get('https://api.ipify.org', timeout=5).text
+        except:
+            ip_publico = "Não foi possível recuperar o IP público."
+            
+        resposta = (
+            f"🌐 {Colors.BOLD}Sua configuração de rede:{Colors.RESET}\n"
+            f"   • IP Local: {Colors.NEON_CYAN}{ip_local}{Colors.RESET}\n"
+            f"   • IP Público: {Colors.NEON_PINK}{ip_publico}{Colors.RESET}"
+        )
+        return resposta
+    except Exception as e:
+        return f"Erro ao obter informações de rede: {e}"
+
 # Placeholder para gravação de tela
 def iniciar_gravacao_sistema(username=None):
     return "Funcionalidade de gravação de tela em migração."
