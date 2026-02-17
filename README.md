@@ -1,59 +1,93 @@
-# 🤖 J.A.R.V.I.S
-*Automação, produtividade, inteligência, tudo em um só lugar!*  
+# 🤖 J.A.R.V.I.S — System Assistant v4.0.0
+
+<p align="center">
+  <img src="https://img.shields.io/badge/Engine-Neura_AI-blueviolet?style=for-the-badge" alt="Neura AI">
+  <img src="https://img.shields.io/badge/UI-Neon_Premium-cyan?style=for-the-badge" alt="Neon UI">
+  <img src="https://img.shields.io/badge/Language-Python-blue?style=for-the-badge" alt="Python">
+</p>
 
 ---
 
-## 📖 Sobre o Projeto
-O **JARVIS** é um assistente pessoal inteligente desenvolvido em **Python** com integração à **IA Generativa (Gemini)**, suporte a **comandos de voz e texto** e múltiplas automações que facilitam o seu dia a dia(criação de agenda, instalação de programas, etc).
+## 🌌 Visão Geral
 
-Seja para abrir aplicativos, analisar arquivos, criar códigos, instalar programas ou até executar comandos administrativos no Windows — JARVIS faz tudo com agilidade e inteligência.
+O **JARVIS** evoluiu. Deixando para trás as limitações de assistentes convencionais, a versão 4.0 introduz uma arquitetura modular robusta, uma interface visual **Neon-Premium** e o poderoso motor **Neura AI**.
 
----
-
-## 🚀 Funcionalidades
-
-✅ **Controle por Voz e Texto** – Interaja de forma natural.   
-✅ **Configurações de Usúario** – Alteração de username e senha.   
-✅ **Integração com Gemini** – Respostas inteligentes e criação de conteúdos automáticos.   
-✅ **Envio de mensagens automatizado (Whatsapp Web)** – Mande mensagens automaticas.  
-✅ **Envio de E-mails automatizado** – Envie emails de forma automática.  
-✅ **Abrir Sites, Apps e Pastas** – Apenas diga ou digite o comando("abrir pasta documentos", "abrir netflix").  
-✅ **Gerenciamento de Agenda (Excel)** – Criar, listar e adicionar tarefas.  
-✅ **Análise de Arquivos** – PDF, DOCX, PPTX, XLSX e mais.  
-✅ **Criação Automática de Código** – Informe a linguagem e a descrição(py, java, js, php, c, html).   
-✅ **Memória Contextual** – Mantém o contexto durante a sessão.  
-✅ **Análise de Imagens** – Analise de imagens com integração do Gemini.  
-✅ **Notificador de Tarefas** – Com alerta e verificação de pendências na agenda.  
-
----
-# Vídeos
-    Acesse o link: https://drive.google.com/drive/folders/1KJnEGUXj4hc3oLkeB7XSb5aOEYUPtKsB?usp=drive_link
----
-## 📦 Tecnologias Utilizadas
-
-- **Python**
-- **Google Gemini API** (IA generativa)
-- **MySQL** (Banco de dados/Memória de conversas)
-- **SpeechRecognition / pyttsx3** (Reconhecimento e síntese de voz)
+Agora, o JARVIS não apenas executa comandos; ele entende suas **intenções**. Através de processamento de linguagem natural avançado (NLP) e detecção de intenção (Intent Classification), você pode conversar de forma fluida, sem a necessidade de comandos rígidos ou prefixos obrigatórios.
 
 ---
 
-## ⚙️ Como Usar
+## 💎 Diferenciais da Versão 4.0
+
+### 🧠 Inteligência Superior (Neura Core)
+
+- **Processamento Multimodal**: Análise de imagens em tempo real usando visão computacional integrada ao cérebro Neura.
+- **Intent Classification**: O sistema distingue automaticamente entre uma conversa casual e um pedido de ação (ex: abrir sites, tocar música, ver agenda).
+- **Memória Persistente**: Integração total com **MySQL** para histórico de chat, sessões JWT e logs de auditoria.
+
+### 🎨 Experiência do Usuário (Premium CLI)
+
+- **Interface Neon**: Design inspirado em alta tecnologia com gradientes dinâmicos, molduras Unicode e spinners de processamento.
+- **Alinhamento Inteligente**: A interface se adapta automaticamente à largura do seu terminal, garantindo centralização e estética limpa.
+- **Modo Silencioso e Voz**: Escolha entre interagir via texto puro no Neura Core ou via interface de voz completa.
+
+---
+
+## 🚀 Funcionalidades Principais
+
+| Módulo              | Descrição                                                                                                             |
+| :------------------ | :-------------------------------------------------------------------------------------------------------------------- |
+| **🌐 Media & Web**  | Reprodução via YouTube, Pesquisa Google, Download de Vídeo/Áudio (yt-dlp) e Navegação Inteligente.                    |
+| **🔍 AI Analysis**  | Raspagem e resumo de sites, codificação automática em múltiplas linguagens e análise de documentos (PDF, DOCX, XLSX). |
+| **📅 Smart Agenda** | Gerenciamento completo de tarefas com banco de dados, alertas de prazos e visualização diária.                        |
+| **💻 System Utils** | Instalação/Desinstalação de apps via terminal, limpeza de cache, controle de gravação de tela e info do sistema.      |
+| **📧 Comms**        | Automação avançada para WhatsApp (Mensagens Individuais, Grupos e Agendamento) e E-mail.                              |
+
+---
+
+## ⚙️ Instalação e Configuração
 
 ### 1️⃣ Pré-requisitos
-- Python 3.10 ou superior instalado  
-- Chave da API Gemini no arquivo `.env`  
 
-- Criar ambiente virtual: 
-    `python -m venv venv` 
+- Python 3.10+
+- Servidor MySQL ativo
+- Ambiente Neura AI configurado (Ollama/Neura Tunnel)
 
-- Instalar dependências:
-    `pip install -r requirements.txt`
+### 2️⃣ Setup Rápido
 
+```bash
+# Clone o repositório
+git clone https://github.com/DrkCde15/JARVIS.git
 
+# Crie e ative o ambiente virtual
+python -m venv venv
+source venv/bin/activate  # venv\Scripts\activate no Windows
 
-## Júlio Cesar
-- Desenvolvedor de IA, automação, segurança da informação.
-- Trabalho como engeheiro de dados.
-- Contato: jcesarsantana215@gmail.com
-- LinkedIn: https://www.linkedin.com/in/julio-santana-ads/
+# Instale as dependências
+pip install -r requirements.txt
+```
+
+### 3️⃣ Execução
+
+```bash
+python main.py
+```
+
+---
+
+## 🛠️ Arquitetura Modular
+
+O projeto agora é organizado em sub-módulos para máxima escalabilidade:
+
+- `commands/`: Pacote contendo lógica de agenda, mídia, arquivos, sistema e IA.
+- `memory.py`: Camada de persistência MySQL e segurança.
+- `ai_service.py`: Interface de conexão com o Neura Engine.
+- `intent_manager.py`: O classificador de intenções em linguagem natural.
+
+---
+
+## 👨‍💻 Desenvolvedor
+
+**Júlio Cesar**  
+📧 [jcesarsantana215@gmail.com](mailto:jcesarsantana215@gmail.com)  
+🔗 [LinkedIn](https://www.linkedin.com/in/julio-santana-ads/)
+

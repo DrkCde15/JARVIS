@@ -6,7 +6,7 @@ pyperclip
 plyer
 winapps
 pywhatkit
-google-genai
+neura_ai
 SpeechRecognition
 pyttsx3
 pyaudio
