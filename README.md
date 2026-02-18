@@ -2,84 +2,65 @@
 
 <p align="center">
   <img src="https://img.shields.io/badge/Engine-Neura_AI-blueviolet?style=for-the-badge" alt="Neura AI">
-  <img src="https://img.shields.io/badge/UI-CustomTkinter_Neon-cyan?style=for-the-badge" alt="CustomTkinter UI">
-  <img src="https://img.shields.io/badge/Language-Python-blue?style=for-the-badge" alt="Python">
-  <img src="https://img.shields.io/badge/Status-Modern_GUI-green?style=for-the-badge" alt="Status">
+  <img src="https://img.shields.io/badge/Status-Advanced_Automation-green?style=for-the-badge" alt="Status">
+  <img src="https://img.shields.io/badge/Intelligence-Multimodal-cyan?style=for-the-badge" alt="Intelligence">
 </p>
 
 ---
 
-## 🌌 Visão Geral
+## 🌌 O Cérebro: Neura AI Engine
 
-O **JARVIS** alcançou seu ápice visual e funcional. A versão 4.1 marca a transição definitiva do terminal para uma **Interface Gráfica de Usuário (GUI) Moderna**, construída com `CustomTkinter`. Combinando a estética **Neon-Premium** com o motor **Neura AI**, o JARVIS agora oferece uma experiência de software de última geração diretamente no seu desktop.
-
----
-
-## 💎 Diferenciais da Versão 4.1 (GUI Epoch)
-
-### 🖥️ Interface Neon-Premium (CustomTkinter)
-
-- **Design Futurista**: Janelas com transparência simulada, acentos em Ciano Neon e Roxo, e fontes otimizadas para leitura técnica.
-- **Arquitetura Assíncrona**: O núcleo do sistema opera em threads separadas, garantindo que a interface permaneça fluida enquanto a IA processa grandes volumes de dados.
-- **Dashboard Interativo**: Barra lateral com botões dinâmicos que solicitam entradas do usuário (Site, Música, Agenda).
-
-### 🧠 Inteligência & Conveniência
-
-- **Fichário de Comandos Inteligente**: Classificação de intenções (NLP) para distinguir entre dúvidas de conhecimento e ordens operacionais.
-- **Persistent Auth**: Uma vez logado, o sistema lembra do operador, permitindo acesso instantâneo em sessões futuras sem necessidade de re-autenticação manual.
-- **Multimodalidade Direta**: Botões dedicados para **Upload de Arquivos/Imagens** (`+`) e **Interação por Voz** (`🎤`) integrados na barra de chat.
+O JARVIS v4.1.0 é alimentado pelo motor **Neura AI**, que transforma seu assistente em um sistema autônomo de tomada de decisão. Diferente de scripts convencionais, o JARVIS utiliza **Intent Classification (NLP)** para entender o que você quer dizer, filtrando ordens operacionais de conversas casuais. O sistema processa intenções de forma fluida, permitindo que você peça ações como se estivesse falando com um assistente humano.
 
 ---
 
-## 🚀 Funcionalidades Principais
+## Funcionalidades
 
-| Módulo                 | Chat & GUI Capabilities                                                                            |
-| :--------------------- | :------------------------------------------------------------------------------------------------- |
-| **🌐 Media & Web**     | Pesquisa e reprodução instantânea via diálogos interativos ou comandos de voz.                     |
-| **🔍 Vision & Docs**   | Upload direto de imagens para análise via Cérebro Neura e leitura de documentos (PDF, XLSX, etc.). |
-| **📅 Smart Agenda**    | Visualização de tarefas integrada ao chat e gerenciamento de compromissos em tempo real.           |
-| **💻 System Utils**    | Monitoramento de rede (IP Local/Público) e controle de software via interface gráfica.             |
-| **📧 Auth & Security** | Sistema de login persistente com criptografia e armazenamento seguro de tokens locais.             |
+### 🧠 Inteligência Multimodal & Análise
 
----
+O JARVIS expande os limites da automação convencional através da interpretação de dados complexos:
 
-## ⚙️ Instalação e Configuração
+- **Visão Computacional**: Processamento de imagens em tempo real para descrição de cenas, leitura de OCR e identificação de padrões visuais integrados ao Cérebro Neura.
+- **Analista de Documentos**: Engenharia de dados aplicada para leitura e extração de insights de arquivos PDF, DOCX, XLSX e CSV.
+- **Web Scraping Inteligente**: Capacidade de raspar sites dinâmicos, gerar resumos estruturados e responder perguntas baseadas no conteúdo de URLs fornecidas.
+- **Desenvolvimento Assistido**: Geração, depuração e explicação de código em múltiplas linguagens de programação.
 
-### 1️⃣ Pré-requisitos
+### 🌐 Automação Web & Mídia
 
-- Python 3.10+
-- Servidor MySQL ativo
-- Bibliotecas gráficas (CustomTkinter, Pillow)
+Gerenciamento total do seu entretenimento e navegação:
 
-### 2️⃣ Setup Rápido
+- **Streaming Dinâmico**: Busca e reprodução automática de músicas e playlists no YouTube através de comandos simples.
+- **Navegação Inteligente**: Mapeamento de rotas para serviços comuns (GitHub, Instagram, etc) e fallback automático para buscas inteligentes quando o destino não é explícito.
+- **Media Master**: Download de vídeos e áudios com conversão automática, permitindo a criação de bibliotecas locais de forma simplificada.
 
-```bash
-# Clone o repositório
-git clone https://github.com/DrkCde15/JARVIS.git
+### Comunicação e Mensageria
 
-# Configure o ambiente virtual (Recomendado: jenv)
-python -m venv jenv
-.\jenv\Scripts\activate
+Automação de alto nível para manter você conectado:
 
-# Instale as dependências unificadas
-pip install -r requirements.txt
-```
+- **WhatsApp Automation**: Envio de mensagens instantâneas para contatos, gestão de grupos e o poderoso recurso de **mensagens agendadas**, que garante que seus envios ocorram no horário exato programado.
+- **Workflow de E-mail**: Integração para disparo de e-mails, comunicados e relatórios de sistema sem interrupção do seu fluxo de trabalho principal.
 
-### 3️⃣ Execução
+### 📅 Smart Agenda (Persistente)
 
-Para garantir o uso do motor gráfico correto:
+Seu braço direito na organização pessoal:
 
-```bash
-.\jenv\Scripts\python.exe main.py
-```
+- **Persistência em MySQL**: Gerenciamento de tarefas (CRUD completo) com armazenamento robusto, permitindo que suas tarefas sobrevivam a reinicializações.
+- **Visão Diária**: Compilação inteligente de compromissos para fornecer um panorama do seu dia através do comando "minha agenda".
+
+### 💻 Utilidades de Sistema e Rede
+
+Controle de baixo nível e monitoramento de hardware:
+
+- **Software Management**: Auditoria de aplicativos instalados no Windows, abertura rápida de softwares e ferramentas de limpeza de lixo sistêmico/cache.
+- **Screen & System Record**: Gestão de gravação de tela e captura de áudio do sistema para documentação de processos.
 
 ---
 
-## 🛠️ Nova Estrutura GUI
+## Segurança e User Experience
 
-- `main.py`: Agora atua como o **Orquestrador de Interface**, gerenciando janelas, threads de processamento e estados de login.
-- `commands/system_utils.py`: Inclui novas rotinas de monitoramento de rede (IPv4/IPv6).
-- `intent_manager.py`: Refinado para diferenciar dúvidas de carreira/estudos de comandos operacionais.
+- **Persistent Session**: Logar apenas uma vez. O JARVIS utiliza criptografia local para lembrar do operador, permitindo acesso instantâneo em usos futuros.
+- **Interface Modernizada (GUI)**: Migração total para uma interface gráfica intuitiva (CustomTkinter), separando claramente o chat das ferramentas de controle lateral.
+- **Multimodalidade no Cockpit**: Botões rápidos para **Upload de Arquivos** (`+`) e **Interação por Voz** (`🎤`) agora fazem parte do painel principal.
 
 ---
 
