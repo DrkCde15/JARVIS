@@ -45,7 +45,7 @@ class JarvisApp(ctk.CTk):
     def __init__(self):
         super().__init__()
 
-        self.title("J.A.R.V.I.S — System Assistant v4.0.0")
+        self.title("J.A.R.V.I.S — System Assistant")
         self.geometry("1100x700")
         
         # Session Data
@@ -169,7 +169,7 @@ class MainFrame(ctk.CTkFrame):
         self.sidebar.grid(row=0, column=0, sticky="nsew")
         self.sidebar.grid_propagate(False)
 
-        self.logo = ctk.CTkLabel(self.sidebar, text="JARVIS Core", font=ctk.CTkFont(size=20, weight="bold"), text_color="#00FFFF")
+        self.logo = ctk.CTkLabel(self.sidebar, text="JARVIS", font=ctk.CTkFont(size=20, weight="bold"), text_color="#00FFFF")
         self.logo.pack(pady=40)
 
         self.info_box = ctk.CTkFrame(self.sidebar, fg_color="#151515", corner_radius=10)
@@ -224,8 +224,6 @@ class MainFrame(ctk.CTkFrame):
         self.send_btn = ctk.CTkButton(self.input_frame, text="▶", width=80, height=55, command=self.send_command,
                                      fg_color="#00FFFF", text_color="black", font=ctk.CTkFont(weight="bold"))
         self.send_btn.grid(row=0, column=3)
-
-        self.log_event("Sinal de rede estável. Núcleo v4.0.0 em prontidão.")
 
     def create_side_btn(self, text, command_fn):
         btn = ctk.CTkButton(self.sidebar, text=text, anchor="w", fg_color="transparent", 

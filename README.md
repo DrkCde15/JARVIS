@@ -1,16 +1,17 @@
-# 🤖 J.A.R.V.I.S — System Assistant v4.1.0
+# 🤖 J.A.R.V.I.S — System Assistant v4.2.0
 
 <p align="center">
-  <img src="https://img.shields.io/badge/Engine-Neura_AI-blueviolet?style=for-the-badge" alt="Neura AI">
+  <img src="https://img.shields.io/badge/Engine-Google_Gemini-blue?style=for-the-badge" alt="Google Gemini">
   <img src="https://img.shields.io/badge/Status-Advanced_Automation-green?style=for-the-badge" alt="Status">
   <img src="https://img.shields.io/badge/Intelligence-Multimodal-cyan?style=for-the-badge" alt="Intelligence">
+  <img src="https://img.shields.io/badge/Automation-Playwright-orange?style=for-the-badge" alt="Playwright">
 </p>
 
 ---
 
-## 🌌 O Cérebro: Neura AI Engine
+## 🌌 O Cérebro: Google Gemini Engine (v2.5 Flash)
 
-O JARVIS v4.1.0 é alimentado pelo motor **Neura AI**, que transforma seu assistente em um sistema autônomo de tomada de decisão. Diferente de scripts convencionais, o JARVIS utiliza **Intent Classification (NLP)** para entender o que você quer dizer, filtrando ordens operacionais de conversas casuais. O sistema processa intenções de forma fluida, permitindo que você peça ações como se estivesse falando com um assistente humano.
+O JARVIS v4.2.0 agora é alimentado pelo motor **Google Gemini**, utilizando o SDK de última geração `google-genai`. Esta transição permite uma tomada de decisão muito mais precisa, processamento multimodal nativo (texto e imagem) e uma velocidade de resposta sem precedentes.
 
 ---
 
@@ -18,49 +19,49 @@ O JARVIS v4.1.0 é alimentado pelo motor **Neura AI**, que transforma seu assist
 
 ### 🧠 Inteligência Multimodal & Análise
 
-O JARVIS expande os limites da automação convencional através da interpretação de dados complexos:
+O JARVIS utiliza o poder do Gemini para interpretar dados complexos em tempo real:
 
-- **Visão Computacional**: Processamento de imagens em tempo real para descrição de cenas, leitura de OCR e identificação de padrões visuais integrados ao Cérebro Neura.
-- **Analista de Documentos**: Engenharia de dados aplicada para leitura e extração de insights de arquivos PDF, DOCX, XLSX e CSV.
-- **Web Scraping Inteligente**: Capacidade de raspar sites dinâmicos, gerar resumos estruturados e responder perguntas baseadas no conteúdo de URLs fornecidas.
-- **Desenvolvimento Assistido**: Geração, depuração e explicação de código em múltiplas linguagens de programação.
+- **Visão Computacional Nativa**: Análise detalhada de imagens diretamente pelo Gemini, permitindo descrição de cenas, leitura de códigos e identificação de contextos visuais.
+- **Analista de Documentos**: Extração de insights de arquivos PDF, DOCX, XLSX e CSV integrada ao fluxo de conversa.
+- **Web Scraping Dinâmico (Playwright)**: Utiliza **Playwright** para renderizar e raspar sites modernos que dependem de JavaScript, garantindo que o JARVIS "veja" o mesmo conteúdo que um humano.
+- **Desenvolvimento Assistido**: Geração e depuração de código com a precisão dos modelos mais recentes do Google.
 
-### 🌐 Automação Web & Mídia
+### 🌐 Automação Web & Mídia (Next-Gen)
 
-Gerenciamento total do seu entretenimento e navegação:
+Gerenciamento total do seu entretenimento e navegação com estabilidade industrial:
 
-- **Streaming Dinâmico**: Busca e reprodução automática de músicas e playlists no YouTube através de comandos simples.
-- **Navegação Inteligente**: Mapeamento de rotas para serviços comuns (GitHub, Instagram, etc) e fallback automático para buscas inteligentes quando o destino não é explícito.
-- **Media Master**: Download de vídeos e áudios com conversão automática, permitindo a criação de bibliotecas locais de forma simplificada.
+- **Streaming Dinâmico**: Reprodução automática de músicas e vídeos no YouTube com busca inteligente.
+- **Navegação de Baixa Latência**: Mapeamento de rotas e abertura de sites via navegador controlado por código.
+- **Media Master**: Download de vídeos e áudios com conversão automática para bibliotecas locais.
 
-### Comunicação e Mensageria
+### 💬 Comunicação e Mensageria Avançada
 
-Automação de alto nível para manter você conectado:
+Automação de alto nível para manter você conectado, sem interrupções:
 
-- **WhatsApp Automation**: Envio de mensagens instantâneas para contatos, gestão de grupos e o poderoso recurso de **mensagens agendadas**, que garante que seus envios ocorram no horário exato programado.
-- **Workflow de E-mail**: Integração para disparo de e-mails, comunicados e relatórios de sistema sem interrupção do seu fluxo de trabalho principal.
+- **WhatsApp Automation (Playwright)**: Envio de mensagens instantâneas e para grupos utilizando drivers de navegador real. Diferente de simuladores de teclado, o uso do Playwright garante que as mensagens sejam enviadas sem ocupar seu mouse ou tela.
+- **Workflow de E-mail**: Integração SMTP para disparo de e-mails técnicos e relatórios diretamente do terminal ou cockpit.
 
 ### 📅 Smart Agenda (Persistente)
 
 Seu braço direito na organização pessoal:
 
-- **Persistência em MySQL**: Gerenciamento de tarefas (CRUD completo) com armazenamento robusto, permitindo que suas tarefas sobrevivam a reinicializações.
-- **Visão Diária**: Compilação inteligente de compromissos para fornecer um panorama do seu dia através do comando "minha agenda".
+- **Persistência em MySQL**: Gerenciamento de tarefas (CRUD) com armazenamento robusto em banco de dados.
+- **Visão Diária**: Panorama matinal de compromissos gerado via comando de voz ou texto.
 
 ### 💻 Utilidades de Sistema e Rede
 
-Controle de baixo nível e monitoramento de hardware:
+Controle total do cockpit:
 
-- **Software Management**: Auditoria de aplicativos instalados no Windows, abertura rápida de softwares e ferramentas de limpeza de lixo sistêmico/cache.
-- **Screen & System Record**: Gestão de gravação de tela e captura de áudio do sistema para documentação de processos.
+- **Software Management**: Auditoria e abertura rápida de aplicativos instalados no Windows.
+- **Network Stats**: Monitoramento de IP Local e Público em tempo real.
 
 ---
 
 ## Segurança e User Experience
 
-- **Persistent Session**: Logar apenas uma vez. O JARVIS utiliza criptografia local para lembrar do operador, permitindo acesso instantâneo em usos futuros.
-- **Interface Modernizada (GUI)**: Migração total para uma interface gráfica intuitiva (CustomTkinter), separando claramente o chat das ferramentas de controle lateral.
-- **Multimodalidade no Cockpit**: Botões rápidos para **Upload de Arquivos** (`+`) e **Interação por Voz** (`🎤`) agora fazem parte do painel principal.
+- **Persistent Session**: Criptografia local para login único e seguro.
+- **Interface Modernizada (GUI)**: Interface gráfica intuitiva em CustomTkinter com painel de ferramentas rápido.
+- **Estabilidade Industrial**: A transição para o Playwright eliminou falhas comuns de "cliques perdidos" em automações web.
 
 ---
 

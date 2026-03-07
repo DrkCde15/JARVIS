@@ -1,21 +1,24 @@
-# ai_service.py - v0.4.0 (Alinhado ao Core Neura)
+import os
 import logging
-from neura_ai.core import Neura 
-from neura_ai.config import NeuraConfig
+from google import genai
+from google.genai import types
+from dotenv import load_dotenv
 from memory import adicionar_mensagem_chat
+
+# Carregar variáveis de ambiente
+load_dotenv()
 
 # =====================================================
 # LOGGER
 # =====================================================
-
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger("JARVIS_SERVICE")
 
 # =====================================================
 # CONFIG
 # =====================================================
-
-MODEL_NAME = "qwen2:0.5b"
+API_KEY = os.getenv("API_GEMINI")
+MODEL_NAME = "gemini-2.5-flash"
 
 def obter_prompt_sistema():
     return (
@@ -29,29 +32,68 @@ def obter_prompt_sistema():
         "Se gerar texto em inglês ou incoerente, regenere automaticamente a resposta em português correto.\n"
     )
 
+# =====================================================
+# CLASSE DE COMPATIBILIDADE (GEMINI BRAIN - NOVO SDK)
+# =====================================================
+class GeminiProvider:
+    """Provedor para o Google Gemini usando o novo SDK google-genai."""
+    def __init__(self, api_key, model_name=MODEL_NAME):
+        self.api_key = api_key
+        self.model_name = model_name
+        self.client = genai.Client(api_key=self.api_key)
+        self.config = types.GenerateContentConfig(
+            system_instruction=obter_prompt_sistema()
+        )
+        logger.info(f"Gemini inicializado | Modelo: {self.model_name}")
+
+    def get_response(self, prompt, image=None):
+        """Suporta texto e imagens como input multimodal."""
+        try:
+            conteudo = [prompt]
+            if image:
+                conteudo.append(image)
+            
+            response = self.client.models.generate_content(
+                model=self.model_name,
+                contents=conteudo,
+                config=self.config
+            )
+            
+            if response and response.text:
+                return response.text
+            return "Não foi possível extrair uma resposta do Gemini."
+        except Exception as e:
+            logger.error(f"Erro ao gerar resposta Gemini: {e}")
+            return f"Erro na IA: {e}"
+
+    def health_check(self):
+        """Verifica se a chave da API é válida."""
+        try:
+            # Teste rápido com poucos tokens
+            self.client.models.generate_content(
+                model=self.model_name,
+                contents="ping",
+                config=types.GenerateContentConfig(max_output_tokens=1)
+            )
+            return True
+        except:
+            return False
 
 # =====================================================
 # INICIALIZAÇÃO DO CÉREBRO
 # =====================================================
 
 def inicializar_brain():
-    try:
-        brain = Neura(
-            model=MODEL_NAME,
-            system_prompt=obter_prompt_sistema(),
-            host=NeuraConfig.TUNNEL_URL
-        )
-
-        if not brain.health_check():
-            logger.warning("Servidor Ollama não respondeu no health check.")
-
-        logger.info(f"LLM ativo | Modelo: {MODEL_NAME}")
-        return brain
-
-    except Exception as e:
-        logger.error(f"Falha ao iniciar Neura: {e}")
+    if not API_KEY:
+        logger.error("API_GEMINI não encontrada no arquivo .env")
         return None
-
+    
+    try:
+        prov = GeminiProvider(API_KEY)
+        return prov
+    except Exception as e:
+        logger.error(f"Falha ao configurar provedor Gemini: {e}")
+        return None
 
 brain = inicializar_brain()
 
@@ -61,7 +103,6 @@ def recarregar_llm():
     return brain is not None
 
 def construir_historico(*args, **kwargs):
-    # Mantido apenas para compatibilidade com código legado
     return ""
 
 # =====================================================
@@ -73,23 +114,17 @@ def gerar_resposta_ia(input_usuario: str, session_id: str, username: str = "Senh
 
     if brain is None:
         if not recarregar_llm():
-            return "Sistema de IA indisponível."
+            return "Sistema de IA indisponível. Verifique sua chave no arquivo .env."
 
     if len(input_usuario.strip()) < 3:
         return "Pronto."
 
     try:
-        # Neura já gerencia:
-        # - memória SQLite
-        # - contexto
-        # - system prompt
-        # - roles
         resposta = brain.get_response(input_usuario)
 
         if not resposta:
             return "Não consegui gerar resposta agora."
 
-        # Persistência externa do teu chat
         adicionar_mensagem_chat(session_id, input_usuario, "human")
         adicionar_mensagem_chat(session_id, resposta, "ai")
 
@@ -98,7 +133,6 @@ def gerar_resposta_ia(input_usuario: str, session_id: str, username: str = "Senh
     except Exception as e:
         logger.error(f"Erro na geração: {e}", exc_info=True)
         return f"Falha na geração da resposta: {str(e)}"
-
 
 # =====================================================
 # STATUS
@@ -110,5 +144,6 @@ def obter_status_api():
 
     return {
         "disponivel": True,
-        "modelo": MODEL_NAME
+        "modelo": MODEL_NAME,
+        "provedor": "Google Gemini"
     }
