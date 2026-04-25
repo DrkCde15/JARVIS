@@ -1,11 +1,10 @@
 import os
 import logging
-from google import genai
-from google.genai import types
+import requests
 from dotenv import load_dotenv
 from memory import adicionar_mensagem_chat
 
-# Carregar variáveis de ambiente
+# Carregar variaveis de ambiente
 load_dotenv()
 
 # =====================================================
@@ -17,133 +16,165 @@ logger = logging.getLogger("JARVIS_SERVICE")
 # =====================================================
 # CONFIG
 # =====================================================
-API_KEY = os.getenv("API_GEMINI")
-MODEL_NAME = "gemini-2.5-flash"
+API_KEY = os.getenv("API_GROQ")
+MODEL_NAME = os.getenv("MODEL_NAME", "groq/compound-mini")
+GROQ_BASE_URL = os.getenv("GROQ_BASE_URL", "https://api.groq.com/openai/v1")
+try:
+    REQUEST_TIMEOUT = int(os.getenv("GROQ_TIMEOUT", "30"))
+except (TypeError, ValueError):
+    REQUEST_TIMEOUT = 30
+FREE_MODELS = {
+    "groq/compound",
+    "groq/compound-mini",
+}
+
 
 def obter_prompt_sistema():
     return (
-        "Você é o JARVIS, assistente técnico especializado em programação e tecnologia.\n"
-        "Responda SEMPRE em português do Brasil.\n"
-        "Use linguagem técnica, clara e objetiva.\n"
-        "Evite frases genéricas e repetitivas.\n"
-        "Explique de forma prática, como um programador experiente.\n"
-        "Se a pergunta for sobre programação, inclua exemplos de código quando fizer sentido.\n"
-        "Nunca responda em inglês.\n"
-        "Se gerar texto em inglês ou incoerente, regenere automaticamente a resposta em português correto.\n"
+        "Voce e o JARVIS, assistente tecnico especializado em programacao e tecnologia.\n"
+        "Responda sempre em portugues do Brasil.\n"
+        "Use linguagem tecnica, clara e objetiva.\n"
+        "Evite frases genericas e repetitivas.\n"
+        "Explique de forma pratica, como um programador experiente.\n"
+        "Se a pergunta for sobre programacao, inclua exemplos de codigo quando fizer sentido.\n"
+        "Nunca responda em ingles.\n"
     )
 
+
 # =====================================================
-# CLASSE DE COMPATIBILIDADE (GEMINI BRAIN - NOVO SDK)
+# PROVEDOR GROQ
 # =====================================================
-class GeminiProvider:
-    """Provedor para o Google Gemini usando o novo SDK google-genai."""
+class GroqProvider:
+    """Provedor para Groq via endpoint compativel com OpenAI."""
+
     def __init__(self, api_key, model_name=MODEL_NAME):
         self.api_key = api_key
+        self.base_url = GROQ_BASE_URL.rstrip("/")
         self.model_name = model_name
-        self.client = genai.Client(api_key=self.api_key)
-        self.config = types.GenerateContentConfig(
-            system_instruction=obter_prompt_sistema()
-        )
-        logger.info(f"Gemini inicializado | Modelo: {self.model_name}")
+
+        if self.model_name not in FREE_MODELS:
+            logger.warning(
+                "Modelo '%s' nao permitido. Usando fallback '%s'.",
+                self.model_name,
+                "groq/compound-mini",
+            )
+            self.model_name = "groq/compound-mini"
+
+        logger.info("Groq inicializado | Modelo: %s", self.model_name)
 
     def get_response(self, prompt, image=None):
-        """Suporta texto e imagens como input multimodal."""
+        # Os modelos Compound/Compound Mini neste fluxo sao usados como texto.
+        if image is not None:
+            return "Analise de imagem nao esta habilitada para este modelo no modo atual."
+
         try:
-            conteudo = [prompt]
-            if image:
-                conteudo.append(image)
-            
-            response = self.client.models.generate_content(
-                model=self.model_name,
-                contents=conteudo,
-                config=self.config
+            headers = {
+                "Authorization": f"Bearer {self.api_key}",
+                "Content-Type": "application/json",
+            }
+            payload = {
+                "model": self.model_name,
+                "messages": [
+                    {"role": "system", "content": obter_prompt_sistema()},
+                    {"role": "user", "content": prompt},
+                ],
+                "temperature": 0.4,
+            }
+
+            response = requests.post(
+                f"{self.base_url}/chat/completions",
+                headers=headers,
+                json=payload,
+                timeout=REQUEST_TIMEOUT,
             )
-            
-            if response and response.text:
-                return response.text
-            return "Não foi possível extrair uma resposta do Gemini."
+            response.raise_for_status()
+            data = response.json()
+
+            return (
+                data.get("choices", [{}])[0]
+                .get("message", {})
+                .get("content", "Nao foi possivel extrair resposta da Groq.")
+            )
         except Exception as e:
-            logger.error(f"Erro ao gerar resposta Gemini: {e}")
+            logger.error("Erro ao gerar resposta Groq: %s", e)
             return f"Erro na IA: {e}"
 
     def health_check(self):
-        """Verifica se a chave da API é válida."""
         try:
-            # Teste rápido com poucos tokens
-            self.client.models.generate_content(
-                model=self.model_name,
-                contents="ping",
-                config=types.GenerateContentConfig(max_output_tokens=1)
+            headers = {"Authorization": f"Bearer {self.api_key}"}
+            response = requests.get(
+                f"{self.base_url}/models",
+                headers=headers,
+                timeout=REQUEST_TIMEOUT,
             )
-            return True
-        except:
+            return response.ok
+        except Exception:
             return False
 
-# =====================================================
-# INICIALIZAÇÃO DO CÉREBRO
-# =====================================================
 
+# =====================================================
+# INICIALIZACAO
+# =====================================================
 def inicializar_brain():
     if not API_KEY:
-        logger.error("API_GEMINI não encontrada no arquivo .env")
-        return None
-    
-    try:
-        prov = GeminiProvider(API_KEY)
-        return prov
-    except Exception as e:
-        logger.error(f"Falha ao configurar provedor Gemini: {e}")
+        logger.error("API_GROQ nao encontrada no arquivo .env")
         return None
 
+    try:
+        return GroqProvider(API_KEY)
+    except Exception as e:
+        logger.error("Falha ao configurar provedor Groq: %s", e)
+        return None
+
+
 brain = inicializar_brain()
+
 
 def recarregar_llm():
     global brain
     brain = inicializar_brain()
     return brain is not None
 
+
 def construir_historico(*args, **kwargs):
     return ""
 
-# =====================================================
-# GERAÇÃO DE RESPOSTA
-# =====================================================
 
+# =====================================================
+# GERACAO DE RESPOSTA
+# =====================================================
 def gerar_resposta_ia(input_usuario: str, session_id: str, username: str = "Senhor") -> str:
     global brain
 
     if brain is None:
         if not recarregar_llm():
-            return "Sistema de IA indisponível. Verifique sua chave no arquivo .env."
+            return "Sistema de IA indisponivel. Verifique sua chave no arquivo .env."
 
     if len(input_usuario.strip()) < 3:
         return "Pronto."
 
     try:
         resposta = brain.get_response(input_usuario)
-
         if not resposta:
-            return "Não consegui gerar resposta agora."
+            return "Nao consegui gerar resposta agora."
 
         adicionar_mensagem_chat(session_id, input_usuario, "human")
         adicionar_mensagem_chat(session_id, resposta, "ai")
-
         return resposta
-
     except Exception as e:
-        logger.error(f"Erro na geração: {e}", exc_info=True)
-        return f"Falha na geração da resposta: {str(e)}"
+        logger.error("Erro na geracao: %s", e, exc_info=True)
+        return f"Falha na geracao da resposta: {str(e)}"
+
 
 # =====================================================
 # STATUS
 # =====================================================
-
 def obter_status_api():
     if brain is None:
         return {"disponivel": False}
 
     return {
         "disponivel": True,
-        "modelo": MODEL_NAME,
-        "provedor": "Google Gemini"
+        "modelo": brain.model_name,
+        "provedor": "Groq",
     }

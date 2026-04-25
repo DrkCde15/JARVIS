@@ -1,72 +1,104 @@
-# 🤖 J.A.R.V.I.S — System Assistant v4.2.0
+# J.A.R.V.I.S - System Assistant
 
-<p align="center">
-  <img src="https://img.shields.io/badge/Engine-Google_Gemini-blue?style=for-the-badge" alt="Google Gemini">
-  <img src="https://img.shields.io/badge/Status-Advanced_Automation-green?style=for-the-badge" alt="Status">
-  <img src="https://img.shields.io/badge/Intelligence-Multimodal-cyan?style=for-the-badge" alt="Intelligence">
-  <img src="https://img.shields.io/badge/Automation-Playwright-orange?style=for-the-badge" alt="Playwright">
-</p>
+Assistente pessoal em Python com interface GUI, automacao de tarefas, mensageria, analise de arquivos e integracao com IA via Groq.
 
----
+## Stack atual
 
-## 🌌 O Cérebro: Google Gemini Engine (v2.5 Flash)
+- IA: Groq API
+- GUI: CustomTkinter
+- Automacao web
+- Banco de dados: MySQL
+- Mensageria
+- Analise de arquivos
+- Analise de conteudo de sites
+- Agenda de tarefas
+- Geracao de codigo
+- Acesso a arquivos e apps do sistema
 
-O JARVIS v4.2.0 agora é alimentado pelo motor **Google Gemini**, utilizando o SDK de última geração `google-genai`. Esta transição permite uma tomada de decisão muito mais precisa, processamento multimodal nativo (texto e imagem) e uma velocidade de resposta sem precedentes.
+## Funcionalidades principais
 
----
+- Chat com IA em portugues
+- Abertura de sites e comandos de automacao
+- Envio de WhatsApp
+- Envio de e-mail
+- Analise de conteudo de sites (web scraping)
+- Analise de arquivos (TXT, PDF, DOCX, XLSX, CSV, JSON, PPTX)
+- Agenda com persistencia
 
-## Funcionalidades
+## Observacao importante sobre imagem
 
-### 🧠 Inteligência Multimodal & Análise
+No estado atual, o fluxo de IA esta configurado para chat textual com `groq/compound` e `groq/compound-mini`.  
+Com isso, o comando de analise de imagem retorna mensagem de indisponibilidade nesse modo.
 
-O JARVIS utiliza o poder do Gemini para interpretar dados complexos em tempo real:
+## Requisitos
 
-- **Visão Computacional Nativa**: Análise detalhada de imagens diretamente pelo Gemini, permitindo descrição de cenas, leitura de códigos e identificação de contextos visuais.
-- **Analista de Documentos**: Extração de insights de arquivos PDF, DOCX, XLSX e CSV integrada ao fluxo de conversa.
-- **Web Scraping Dinâmico (Playwright)**: Utiliza **Playwright** para renderizar e raspar sites modernos que dependem de JavaScript, garantindo que o JARVIS "veja" o mesmo conteúdo que um humano.
-- **Desenvolvimento Assistido**: Geração e depuração de código com a precisão dos modelos mais recentes do Google.
+- Python 3.13+
+- Windows (projeto atual com automacoes voltadas para Windows)
+- MySQL ativo
 
-### 🌐 Automação Web & Mídia (Next-Gen)
+## Instalacao
 
-Gerenciamento total do seu entretenimento e navegação com estabilidade industrial:
+1. Criar/ativar ambiente virtual (opcional, recomendado):
 
-- **Streaming Dinâmico**: Reprodução automática de músicas e vídeos no YouTube com busca inteligente.
-- **Navegação de Baixa Latência**: Mapeamento de rotas e abertura de sites via navegador controlado por código.
-- **Media Master**: Download de vídeos e áudios com conversão automática para bibliotecas locais.
+```powershell
+python -m venv jenv
+.\jenv\Scripts\activate
+```
 
-### 💬 Comunicação e Mensageria Avançada
+2. Instalar dependencias:
 
-Automação de alto nível para manter você conectado, sem interrupções:
+```powershell
+pip install -r requirements.txt
+```
 
-- **WhatsApp Automation (Playwright)**: Envio de mensagens instantâneas e para grupos utilizando drivers de navegador real. Diferente de simuladores de teclado, o uso do Playwright garante que as mensagens sejam enviadas sem ocupar seu mouse ou tela.
-- **Workflow de E-mail**: Integração SMTP para disparo de e-mails técnicos e relatórios diretamente do terminal ou cockpit.
+3. Instalar navegador do Playwright:
 
-### 📅 Smart Agenda (Persistente)
+```powershell
+python -m playwright install chromium
+```
 
-Seu braço direito na organização pessoal:
+## Configuracao do `.env`
 
-- **Persistência em MySQL**: Gerenciamento de tarefas (CRUD) com armazenamento robusto em banco de dados.
-- **Visão Diária**: Panorama matinal de compromissos gerado via comando de voz ou texto.
+Exemplo minimo:
 
-### 💻 Utilidades de Sistema e Rede
+```env
+SECRET_KEY=seu_secret
+API_GROQ=sua_chave_groq
+MODEL_NAME=groq/compound-mini
+GROQ_BASE_URL=https://api.groq.com/openai/v1
+GROQ_TIMEOUT=30
 
-Controle total do cockpit:
+MYSQL_HOST=localhost
+MYSQL_PORT=3306
+MYSQL_USER=root
+MYSQL_PASSWORD=sua_senha
+MYSQL_DATABASE=jarvis_db
+```
 
-- **Software Management**: Auditoria e abertura rápida de aplicativos instalados no Windows.
-- **Network Stats**: Monitoramento de IP Local e Público em tempo real.
+## Execucao
 
----
+```powershell
+python main.py
+```
 
-## Segurança e User Experience
+## Estrutura resumida
 
-- **Persistent Session**: Criptografia local para login único e seguro.
-- **Interface Modernizada (GUI)**: Interface gráfica intuitiva em CustomTkinter com painel de ferramentas rápido.
-- **Estabilidade Industrial**: A transição para o Playwright eliminou falhas comuns de "cliques perdidos" em automações web.
+- `main.py`: GUI e fluxo principal
+- `ai_service.py`: integracao com Groq e geracao de resposta
+- `commands/`: comandos de automacao, analise e utilitarios
+- `memory.py`: persistencia de sessoes, mensagens e logs
 
----
+## Notas de desenvolvimento
 
-## 👨‍💻 Desenvolvedor
+- O projeto carrega variaveis com `python-dotenv`.
+- O `ai_service.py` valida modelo contra allowlist:
+  - `groq/compound`
+  - `groq/compound-mini`
+- Se `MODEL_NAME` vier diferente, o fallback atual e `groq/compound-mini`.
 
-**Júlio Cesar**  
-📧 [jcesarsantana215@gmail.com](mailto:jcesarsantana215@gmail.com)  
-🔗 [LinkedIn](https://www.linkedin.com/in/julio-santana-ads/)
+## Autor
+
+Julio Cesar  
+Email: [jcesarsantana215@gmail.com](mailto:jcesarsantana215@gmail.com)  
+LinkedIn: [julio-santana-ads](https://www.linkedin.com/in/julio-santana-ads/)
+

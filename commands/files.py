@@ -67,7 +67,7 @@ def criar_codigo(match, username):
     prompt = f"Crie um código em {linguagem} que: {descricao}"
     try:
         # Note: Added session_id if needed, but for now using username as session_id which is common in this app's legacy
-        codigo = gerar_resposta_ia(prompt, username, username)
+        codigo = gerar_resposta_ia(prompt, username or "local_session", username or "Senhor")
     except Exception as e:
         return f"Erro ao gerar código com IA: {e}"
     
@@ -194,6 +194,6 @@ def analisar_arquivos(match, username):
 
         prompt = f"Analise esse conteúdo extraído do arquivo:\n\n{conteudo}"
         # Fixing signature: using username as session_id
-        return gerar_resposta_ia(prompt, username, username)
+        return gerar_resposta_ia(prompt, username or "local_session", username or "Senhor")
     except Exception as e:
         return f"Erro ao analisar arquivo: {e}"

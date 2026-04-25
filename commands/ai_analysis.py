@@ -1,87 +1,69 @@
 import os
-from PIL import Image
 from playwright.sync_api import sync_playwright
 from commands.constants import Colors
-from commands.voice import falar
-from ai_service import gerar_resposta_ia, brain, MODEL_NAME
+from ai_service import gerar_resposta_ia, obter_status_api
 from memory import adicionar_mensagem_chat, registrar_log
 
+
 def raspar_site(url):
-    """
-    Usa Playwright para capturar conteúdo de sites, inclusive dinâmicos (JS).
-    """
-    if not url.startswith('http'):
-        url = 'https://' + url
+    """Captura conteudo textual de paginas, incluindo sites com JS."""
+    if not url.startswith("http"):
+        url = "https://" + url
 
     try:
         with sync_playwright() as p:
-            # Lança o navegador em modo invisível (headless)
             browser = p.chromium.launch(headless=True)
             page = browser.new_page()
-            
-            # Define um timeout amigável e vai para a URL
             page.goto(url, wait_until="networkidle", timeout=30000)
-            
-            # Extrai o texto visível eliminando scripts e estilos
-            texto = page.evaluate("""() => {
-                const scripts = document.querySelectorAll('script, style, nav, footer');
-                scripts.forEach(s => s.remove());
-                return document.body.innerText;
-            }""")
-            
+            texto = page.evaluate(
+                """() => {
+                    const trash = document.querySelectorAll('script, style, nav, footer');
+                    trash.forEach(el => el.remove());
+                    return document.body ? document.body.innerText : '';
+                }"""
+            )
             browser.close()
-            return texto[:6000] # Aumentado limite para o Gemini processar mais contexto
-            
+            return (texto or "")[:6000]
     except Exception as e:
         print(f"Erro ao raspar site com Playwright: {e}")
         return None
 
-def analisar_site(url, username=None):
+
+def analisar_site(url, username=None, session_id=None):
     try:
-        print(f"🌐 {Colors.BLUE}Acessando site com Playwright: {url}...{Colors.RESET}")
+        print(f"{Colors.BLUE}Acessando site com Playwright: {url}...{Colors.RESET}")
         conteudo = raspar_site(url)
         if not conteudo:
-            return "Não consegui extrair conteúdo do site. Verifique se a URL está correta ou se o site bloqueia raspagem."
-        
+            return "Nao consegui extrair conteudo do site. Verifique a URL ou bloqueio de raspagem."
+
         prompt = (
-            f"Analise o seguinte conteúdo capturado de um site dinâmico:\n\n{conteudo}\n\n"
-            "Resuma os pontos principais e extraia informações relevantes para o usuário."
+            f"Analise o seguinte conteudo capturado de um site dinamico:\n\n{conteudo}\n\n"
+            "Resuma os pontos principais e extraia informacoes relevantes para o usuario."
         )
-        return gerar_resposta_ia(prompt, username, username)
+        sid = session_id or username or "local_session"
+        return gerar_resposta_ia(prompt, sid, username or "Senhor")
     except Exception as e:
         return f"Erro ao analisar site: {e}"
 
+
 def analisar_imagem_comando(caminho, session_id, username=None, modo="texto"):
-    """
-    Abre a imagem e utiliza o Gemini para análise visual.
-    """
+    """Mantem compatibilidade do comando de imagem para modelos Compound."""
     if not os.path.exists(caminho):
-        return f"❌ Arquivo não encontrado: {caminho}"
+        return f"Arquivo nao encontrado: {caminho}"
 
-    try:
-        # Tenta abrir a imagem para processamento visual
-        img = Image.open(caminho).convert("RGB")
-        
-        prompt_usuario = (
-            "Analise a imagem a seguir de forma detalhada e objetiva. "
-            "Descreva os elementos principais e o contexto visual."
-        )
+    status = obter_status_api()
+    modelo = status.get("modelo", "desconhecido")
+    resposta = (
+        f"O modelo atual ({modelo}) neste projeto esta configurado para chat em texto. "
+        "A analise visual de imagem nao esta habilitada neste fluxo."
+    )
 
-        if brain:
-            # O provedor Gemini em ai_service.py já lida com multimodalidade nativamente
-            resposta = brain.get_response(prompt_usuario, image=img)
-        else:
-            return "❌ Sistema de IA (Gemini) não conectado."
+    sid = session_id or username or "local_session"
+    adicionar_mensagem_chat(sid, f"[IMAGEM] {caminho}", "human")
+    adicionar_mensagem_chat(sid, resposta, "ai")
 
-        if not resposta:
-            return "Não consegui analisar a imagem no momento."
+    if username:
+        registrar_log(username, f"Tentativa de analise de imagem sem suporte: {caminho}")
 
-        adicionar_mensagem_chat(session_id, f"[IMAGEM] {caminho}", "human")
-        adicionar_mensagem_chat(session_id, resposta, "ai")
-        
-        if username:
-            registrar_log(username, f"Análise visual Gemini concluída para: {caminho}")
-            
-        return resposta
-    except Exception as e:
-        return f"❌ Erro na análise visual (Gemini): {e}"
+    return resposta
+
