@@ -59,3 +59,37 @@ voice_system = VoiceCommandSystem()
 
 def falar(texto: str):
     voice_system.speak(texto)
+
+
+def ouvir(timeout: int = 5, phrase_time_limit: int = 10, language: str = "pt-BR"):
+    """Captura uma frase pelo microfone e retorna texto transcrito."""
+    try:
+        import speech_recognition as sr
+    except ImportError:
+        print("SpeechRecognition nao esta instalado.")
+        return None
+
+    recognizer = sr.Recognizer()
+
+    try:
+        with sr.Microphone() as source:
+            recognizer.adjust_for_ambient_noise(source, duration=0.8)
+            audio = recognizer.listen(
+                source,
+                timeout=timeout,
+                phrase_time_limit=phrase_time_limit,
+            )
+    except sr.WaitTimeoutError:
+        return None
+    except Exception as e:
+        print(f"Erro ao acessar microfone: {e}")
+        return None
+
+    try:
+        texto = recognizer.recognize_google(audio, language=language)
+        return texto.strip()
+    except sr.UnknownValueError:
+        return None
+    except sr.RequestError as e:
+        print(f"Erro no servico de reconhecimento de voz: {e}")
+        return None

@@ -4,3 +4,5 @@ jenv
 *.txt
 .vscode
 .jarvis_session
+__pycache__
+*.log

@@ -1,11 +1,12 @@
 # J.A.R.V.I.S - System Assistant
 
-Assistente pessoal em Python com interface GUI, automacao de tarefas, mensageria, analise de arquivos e integracao com IA via Groq.
+Assistente pessoal em Python com interface CLI, automacao de tarefas, mensageria, analise de arquivos, voz e integracao com IA via Groq.
 
 ## Stack atual
 
 - IA: Groq API
-- GUI: CustomTkinter
+- Interface: CLI
+- NLP local: spaCy
 - Automacao web
 - Banco de dados: MySQL
 - Mensageria
@@ -17,7 +18,8 @@ Assistente pessoal em Python com interface GUI, automacao de tarefas, mensageria
 
 ## Funcionalidades principais
 
-- Chat com IA em portugues
+- Chat com IA em portugues por texto
+- Entrada por voz usando o comando `ouvir`
 - Abertura de sites e comandos de automacao
 - Envio de WhatsApp
 - Envio de e-mail
@@ -81,9 +83,17 @@ MYSQL_DATABASE=jarvis_db
 python main.py
 ```
 
+Depois de entrar no CLI, use:
+
+```text
+ouvir
+```
+
+para ativar o microfone e processar o comando falado.
+
 ## Estrutura resumida
 
-- `main.py`: GUI e fluxo principal
+- `main.py`: CLI, login e fluxo principal
 - `ai_service.py`: integracao com Groq e geracao de resposta
 - `commands/`: comandos de automacao, analise e utilitarios
 - `memory.py`: persistencia de sessoes, mensagens e logs
@@ -91,6 +101,7 @@ python main.py
 ## Notas de desenvolvimento
 
 - O projeto carrega variaveis com `python-dotenv`.
+- O NLP local usa spaCy com o modelo `pt_core_news_sm`; se o modelo nao carregar, o sistema usa um tokenizer simples em portugues.
 - O `ai_service.py` valida modelo contra allowlist:
   - `groq/compound`
   - `groq/compound-mini`
@@ -101,4 +112,3 @@ python main.py
 Julio Cesar  
 Email: [jcesarsantana215@gmail.com](mailto:jcesarsantana215@gmail.com)  
 LinkedIn: [julio-santana-ads](https://www.linkedin.com/in/julio-santana-ads/)
-

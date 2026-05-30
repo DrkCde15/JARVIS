@@ -60,7 +60,7 @@ class GroqProvider:
             )
             self.model_name = "groq/compound-mini"
 
-        logger.info("Groq inicializado | Modelo: %s", self.model_name)
+        logger.debug("Groq inicializado | Modelo: %s", self.model_name)
 
     def get_response(self, prompt, image=None):
         # Os modelos Compound/Compound Mini neste fluxo sao usados como texto.
