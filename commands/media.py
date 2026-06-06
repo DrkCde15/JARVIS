@@ -1,4 +1,5 @@
 import os
+import re
 import subprocess
 import webbrowser
 from pathlib import Path
@@ -18,12 +19,11 @@ def tocar_musica_pywhatkit(match, username=None, modo='texto'):
                 musica = match.group(1).strip()
             except IndexError:
                 pass
+        elif isinstance(match, str) and match.strip():
+            musica = match.strip()
         
         if not musica:
-            musica = input(f"{Colors.PURPLE}>{Colors.RESET} Qual música deseja ouvir, senhor? ").strip()
-        
-        if not musica:
-            return "Nenhuma música informada, senhor."
+            return "Por favor, repita o comando informando o nome da música, senhor."
         
         msg = f"Abrindo '{musica}' no YouTube..."
         if modo == 'voz': falar(msg)
@@ -40,12 +40,11 @@ def pesquisar_google_pywhatkit(match, username=None, modo='texto'):
         if hasattr(match, 'group'):
             if match.lastindex >= 2: termo = match.group(2).strip()
             elif match.lastindex >= 1: termo = match.group(1).strip()
+        elif isinstance(match, str) and match.strip():
+            termo = match.strip()
         
         if not termo:
-            termo = input(f"{Colors.PURPLE}>{Colors.RESET} O que deseja pesquisar no Google, senhor? ").strip()
-        
-        if not termo:
-            return "Por favor especifique o que deseja pesquisar, senhor."
+            return "Por favor especifique o que deseja pesquisar no Google, senhor."
         
         msg = f"Pesquisando '{termo}' no Google..."
         if modo == 'voz': falar(msg)
@@ -62,7 +61,6 @@ def converter_audio_para_aac(caminho_video: Path):
     pass # Implementação dependente de ffmpeg no sistema
 
 def limpar_nome_arquivo(nome):
-    import re
     return re.sub(r'[\\/*?:"<>|]', "", nome)
 
 def baixar_video_youtube(url, username, modo='texto'):

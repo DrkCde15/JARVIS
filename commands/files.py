@@ -8,7 +8,8 @@ from docx import Document
 from pptx import Presentation
 from commands.constants import Colors
 from commands.voice import falar
-# Note: we will import ai_service functions inside the functions to avoid circular imports if any
+from ai_service import gerar_resposta_ia, extrair_params_ia
+from cli_design import jarvis_ask
 
 def encontrar_pasta(nome_pasta_usuario):
     home = os.path.expanduser("~")
@@ -43,50 +44,74 @@ def abrir_pasta(match, username):
             return f"Erro ao abrir a pasta: {e}"
     return f"Pasta '{nome_pasta_usuario}' não encontrada, senhor."
 
-def criar_arquivo(match, username):
+def criar_arquivo(match, username, status=None):
     documentos = Path.home() / "Documents"
-    nome = input(f"{Colors.PURPLE}>{Colors.RESET} Digite o nome do arquivo (ex: texto.txt): ").strip()
+    texto_original = match if isinstance(match, str) else (match.group(0) if hasattr(match, 'group') else "")
+    params = extrair_params_ia(texto_original, ["nome", "conteudo"]) if texto_original else {}
+
+    nome = params.get("nome") or ""
+    conteudo = params.get("conteudo") or ""
+
     if not nome:
-        falar("Nome de arquivo inválido.")
-        return "Operação cancelada."
-    conteudo = input(f"{Colors.PURPLE}>{Colors.RESET} Digite o conteúdo que deseja salvar: ")
+        nome = jarvis_ask("Como devo chamar este arquivo de texto, senhor? Por exemplo: notas.txt", status)
+    if not nome:
+        return "Operação cancelada — nenhum nome fornecido."
+    if not conteudo:
+        conteudo = jarvis_ask("Certo. Qual será o conteúdo dele?", status)
+
     caminho_completo = documentos / nome
     try:
         with open(caminho_completo, "w", encoding="utf-8") as f:
             f.write(conteudo)
-        return f"Arquivo '{nome}' criado com sucesso na pasta Documentos."
+        return f"✅ Arquivo '{nome}' criado com sucesso na pasta Documentos."
     except Exception as e:
-        return f"Erro ao criar o arquivo: {e}"
+        return f"❌ Erro ao criar o arquivo: {e}"
 
-def criar_codigo(match, username):
-    from ai_service import gerar_resposta_ia
+def criar_codigo(match, username, session_id=None, status=None):
     documentos = Path.home() / "Documents"
     documentos.mkdir(exist_ok=True)
-    linguagem = input(f"{Colors.PURPLE}>{Colors.RESET} Qual linguagem de programação você quer usar? ").strip().lower()
-    descricao = input(f"{Colors.PURPLE}>{Colors.RESET} Descreva o que o código deve fazer: ").strip()
+
+    texto_original = match if isinstance(match, str) else (match.group(0) if hasattr(match, 'group') else "")
+    params = extrair_params_ia(texto_original, ["linguagem", "descricao", "nome_arquivo"]) if texto_original else {}
+
+    linguagem = (params.get("linguagem") or "").lower()
+    descricao = params.get("descricao") or ""
+    nome_base = params.get("nome_arquivo") or ""
+
+    if not linguagem:
+        linguagem = jarvis_ask("Senhor, qual linguagem de programação você quer usar? Ex: Python, JavaScript, Go...", status).lower()
+    if not linguagem:
+        return "Operação cancelada — nenhuma linguagem informada."
+
+    if not descricao:
+        descricao = jarvis_ask("Perfeito. Descreva o que esse código deve fazer, por favor.", status)
+    if not descricao:
+        return "Operação cancelada — nenhuma descrição fornecida."
+
     prompt = f"Crie um código em {linguagem} que: {descricao}"
     try:
-        # Note: Added session_id if needed, but for now using username as session_id which is common in this app's legacy
-        codigo = gerar_resposta_ia(prompt, username or "local_session", username or "Senhor")
+        codigo = gerar_resposta_ia(prompt, session_id, username or "Senhor")
     except Exception as e:
-        return f"Erro ao gerar código com IA: {e}"
-    
+        return f"❌ Erro ao gerar código com IA: {e}"
+
     extensoes = {
         "python": ".py", "javascript": ".js", "java": ".java", "html": ".html",
         "c": ".c", "c++": ".cpp", "go": ".go", "php": ".php", "ruby": ".rb",
         "kotlin": ".kt", "swift": ".swift", "rust": ".rs", "csharp": ".cs",
         "c#": ".cs", "css": ".css", "sql": ".sql", "r": ".r"
     }
-    
+
     ext = extensoes.get(linguagem, ".txt")
-    nome_arquivo = input(f"{Colors.PURPLE}>{Colors.RESET} Nome do arquivo (sem extensão)? ").strip() + ext
+    if not nome_base:
+        nome_base = jarvis_ask("Qual nome devo dar a este arquivo? (sem extensão)", status) or "codigo_gerado"
+    nome_arquivo = nome_base.strip() + ext
     caminho = documentos / nome_arquivo
     try:
         with open(caminho, "w", encoding="utf-8") as f:
             f.write(codigo)
-        return f"Código gerado e salvo em: {caminho}"
+        return f"✅ Código gerado e salvo em: {caminho}"
     except Exception as e:
-        return f"Erro ao salvar o arquivo: {e}"
+        return f"❌ Erro ao salvar o arquivo: {e}"
 
 def listar_arquivos(match, username):
     extensao = (match.group(1) or "").lower().replace(".", "").strip() if hasattr(match, 'group') else ""
@@ -169,8 +194,7 @@ def ler_pptx(caminho):
         return texto
     except Exception as e: return f"Erro: {e}"
 
-def analisar_arquivos(match, username):
-    from ai_service import gerar_resposta_ia
+def analisar_arquivos(match, username, session_id=None):
     try:
         nome_arquivo = match.group(1).strip() if hasattr(match, 'group') else match
         arquivo_encontrado = buscar_arquivo_por_nome(nome_arquivo)
@@ -193,7 +217,6 @@ def analisar_arquivos(match, username):
             return "O arquivo está vazio ou ilegível, senhor."
 
         prompt = f"Analise esse conteúdo extraído do arquivo:\n\n{conteudo}"
-        # Fixing signature: using username as session_id
-        return gerar_resposta_ia(prompt, username or "local_session", username or "Senhor")
+        return gerar_resposta_ia(prompt, session_id, username or "Senhor")
     except Exception as e:
         return f"Erro ao analisar arquivo: {e}"

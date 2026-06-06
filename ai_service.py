@@ -143,7 +143,7 @@ def construir_historico(*args, **kwargs):
 # =====================================================
 # GERACAO DE RESPOSTA
 # =====================================================
-def gerar_resposta_ia(input_usuario: str, session_id: str, username: str = "Senhor") -> str:
+def gerar_resposta_ia(input_usuario: str, session_id: str | None = None, username: str = "Senhor") -> str:
     global brain
 
     if brain is None:
@@ -158,12 +158,71 @@ def gerar_resposta_ia(input_usuario: str, session_id: str, username: str = "Senh
         if not resposta:
             return "Nao consegui gerar resposta agora."
 
-        adicionar_mensagem_chat(session_id, input_usuario, "human")
-        adicionar_mensagem_chat(session_id, resposta, "ai")
+        if session_id:
+            adicionar_mensagem_chat(session_id, input_usuario, "human")
+            adicionar_mensagem_chat(session_id, resposta, "ai")
         return resposta
     except Exception as e:
         logger.error("Erro na geracao: %s", e, exc_info=True)
         return f"Falha na geracao da resposta: {str(e)}"
+
+
+def extrair_params_ia(mensagem: str, campos: list[str]) -> dict:
+    """Usa o LLM para extrair parâmetros estruturados de uma mensagem em linguagem natural.
+
+    Args:
+        mensagem: O texto completo digitado pelo usuário.
+        campos: Lista de nomes de campos a extrair, ex: ["destinatario", "assunto", "corpo"].
+
+    Returns:
+        Um dict com os campos encontrados. Campos não encontrados ficam com valor None.
+        Retorna dict vazio em caso de falha para que o chamador use jarvis_ask() normalmente.
+    """
+    import json as _json
+
+    if brain is None:
+        return {}
+
+    campos_str = ", ".join(f'"{c}"' for c in campos)
+    prompt = (
+        f"Extraia as seguintes informações da mensagem do usuário e retorne APENAS um JSON válido "
+        f"com as chaves {campos_str}. Use null para campos não encontrados. "
+        f"Não inclua explicações, apenas o JSON.\n\n"
+        f"Mensagem: {mensagem}"
+    )
+
+    try:
+        headers = {
+            "Authorization": f"Bearer {brain.api_key}",
+            "Content-Type": "application/json",
+        }
+        payload = {
+            "model": brain.model_name,
+            "messages": [
+                {"role": "system", "content": "Você é um extrator de dados. Retorne APENAS JSON válido, sem markdown, sem explicações."},
+                {"role": "user", "content": prompt},
+            ],
+            "temperature": 0.0,
+        }
+        response = requests.post(
+            f"{brain.base_url}/chat/completions",
+            headers=headers,
+            json=payload,
+            timeout=REQUEST_TIMEOUT,
+        )
+        response.raise_for_status()
+        content = response.json()["choices"][0]["message"]["content"].strip()
+        # Remove possíveis blocos de código markdown
+        if content.startswith("```"):
+            content = content.split("```")[1]
+            if content.startswith("json"):
+                content = content[4:]
+        return _json.loads(content)
+    except Exception as e:
+        logger.debug("Falha ao extrair parâmetros via IA: %s", e)
+        return {}
+
+
 
 
 # =====================================================

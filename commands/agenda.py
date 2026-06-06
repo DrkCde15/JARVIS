@@ -1,11 +1,13 @@
 import pandas as pd
 import threading
 import time
+import os
 from datetime import datetime
 from pathlib import Path
 from plyer import notification
 from commands.constants import Colors
 from commands.voice import falar
+from cli_design import jarvis_ask
 
 AGENDA_DIR = Path.home() / "Documents" / "Agenda"
 COLUNAS = ["Tarefa", "DataHora", "Status"]
@@ -48,16 +50,19 @@ def adicionar_tarefa(tarefa: str, data: str, hora: str | None, username: str):
     salvar_agenda_df(df, username)
     return f"Tarefa '{tarefa}' adicionada para {dt.strftime('%d/%m/%Y %H:%M')}."
 
-def adicionar_tarefa_interativa(match, username, modo='texto'):
+def adicionar_tarefa_interativa(match, username, status=None):
     try:
-        tarefa = input(f"{Colors.PURPLE}>{Colors.RESET} Qual a tarefa? ").strip()
-        data = input(f"{Colors.PURPLE}>{Colors.RESET} Data (DD/MM/AAAA): ").strip()
-        hora = input(f"{Colors.PURPLE}>{Colors.RESET} Hora (HH:MM ou Enter para dia todo): ").strip() or None
-        if not tarefa or not data: return "Tarefa e data são obrigatórios."
+        tarefa = jarvis_ask("Qual é a nova tarefa que devo agendar?", status)
+        if not tarefa:
+            return "Operação cancelada — nenhuma tarefa informada."
+        data = jarvis_ask("Para qual data? Use o formato DD/MM/AAAA.", status)
+        if not data:
+            return "Operação cancelada — data não informada."
+        hora = jarvis_ask("Em qual horário? Use HH:MM. Se for o dia todo, deixe em branco.", status) or None
         res = adicionar_tarefa(tarefa, data, hora, username)
-        if modo == 'voz': falar("Tarefa adicionada com sucesso")
         return res
-    except Exception as e: return f"Erro: {e}"
+    except Exception as e:
+        return f"Erro: {e}"
 
 def listar_agenda(username, modo='texto'):
     df = ler_agenda_df(username)

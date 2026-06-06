@@ -40,8 +40,7 @@ def analisar_site(url, username=None, session_id=None):
             f"Analise o seguinte conteudo capturado de um site dinamico:\n\n{conteudo}\n\n"
             "Resuma os pontos principais e extraia informacoes relevantes para o usuario."
         )
-        sid = session_id or username or "local_session"
-        return gerar_resposta_ia(prompt, sid, username or "Senhor")
+        return gerar_resposta_ia(prompt, session_id, username or "Senhor")
     except Exception as e:
         return f"Erro ao analisar site: {e}"
 
@@ -58,12 +57,11 @@ def analisar_imagem_comando(caminho, session_id, username=None, modo="texto"):
         "A analise visual de imagem nao esta habilitada neste fluxo."
     )
 
-    sid = session_id or username or "local_session"
-    adicionar_mensagem_chat(sid, f"[IMAGEM] {caminho}", "human")
-    adicionar_mensagem_chat(sid, resposta, "ai")
+    if session_id:
+        adicionar_mensagem_chat(session_id, f"[IMAGEM] {caminho}", "human")
+        adicionar_mensagem_chat(session_id, resposta, "ai")
 
     if username:
         registrar_log(username, f"Tentativa de analise de imagem sem suporte: {caminho}")
 
     return resposta
-

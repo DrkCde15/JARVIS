@@ -7,11 +7,11 @@ pyperclip
 plyer
 winapps
 pywhatkit
-neura_ai
 SpeechRecognition
 pyttsx3
 pyaudio
 pandas
+rich
 openpyxl
 python-docx
 python-pptx
@@ -21,6 +21,7 @@ pymupdf
 python-dotenv
 pyfiglet
 python-jose[cryptography]
+cryptography
 passlib[bcrypt]
 python-multipart
 pymysql

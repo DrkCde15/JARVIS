@@ -1,4 +1,6 @@
 import re
+from inspect import signature
+from typing import Any, Callable, cast
 from commands.constants import Colors
 from commands.voice import falar
 from commands.software import (
@@ -60,6 +62,47 @@ from memory import (
 )
 from ai_service import gerar_resposta_ia
 
+
+class TextMatch:
+    lastindex = 1
+
+    def __init__(self, text):
+        self.text = text
+
+    def group(self, index=0):
+        if index in (0, 1):
+            return self.text
+        raise IndexError(index)
+
+
+def analisar_arquivo_comando(match, username, session_id=None):
+    return analisar_arquivos(match, username, session_id=session_id)
+
+
+def analisar_site_comando(match, username, session_id=None):
+    return analisar_site(match.group(1).strip(), username, session_id=session_id)
+
+
+def analisar_imagem_regex(match, username, session_id=None):
+    return analisar_imagem_comando(match.group(1).strip(), session_id, username)
+
+
+def instalar_programa_comando(match, username, status=None):
+    return instalar_programa_via_cmd_admin(match.group(1), username, status=status)
+
+
+def executar_handler(funcao, match, username, session_id=None, status=None):
+    fn: Callable[..., Any] = cast(Callable[..., Any], funcao)
+    parametros = signature(fn).parameters
+    kwargs = {}
+
+    if "session_id" in parametros:
+        kwargs["session_id"] = session_id
+    if "status" in parametros:
+        kwargs["status"] = status
+
+    return fn(match, username, **kwargs)
+
 # Padrões de comandos expandidos para Linguagem Natural
 # Aceitam com ou sem '/', prefixo 'jarvis' e variações de frases comuns
 padroes = [
@@ -83,12 +126,12 @@ padroes = [
     (re.compile(r'\/?(?:jarvis\s+)?(?:abr[ei]|olh[ae]|dar\s+uma\s+olhada\s+n?o)\s+(?:o\s+site\s+|o\s+)?(instagram|facebook|google|youtube|netflix|github|gmail|whatsapp)\b', re.IGNORECASE), abrir_site),
 
     # Análises 
-    (re.compile(r'\/?(?:jarvis\s+)?(?:por\s+favor\s+)?analise\s+(?:o\s+)?arquivo\s+(.+)', re.IGNORECASE), lambda m, u: analisar_arquivos(m, u)),
-    (re.compile(r'\/?(?:jarvis\s+)?(?:analise|resuma|veja)\s+(?:o\s+)?site\s+(.+)', re.IGNORECASE), lambda m, u: analisar_site(m.group(1).strip(), u)),
-    (re.compile(r'\/?(?:jarvis\s+)?(?:pode\s+)?(?:analisar?|veja|olh?e|dê\s+uma\s+olhada\s+n?a)\s+(?:essa\s+|n?a\s+)?imagem\s+(.+)', re.IGNORECASE), lambda m, u: analisar_imagem_comando(m.group(1).strip(), u, u)),
+    (re.compile(r'\/?(?:jarvis\s+)?(?:por\s+favor\s+)?analise\s+(?:o\s+)?arquivo\s+(.+)', re.IGNORECASE), analisar_arquivo_comando),
+    (re.compile(r'\/?(?:jarvis\s+)?(?:analise|resuma|veja)\s+(?:o\s+)?site\s+(.+)', re.IGNORECASE), analisar_site_comando),
+    (re.compile(r'\/?(?:jarvis\s+)?(?:pode\s+)?(?:analisar?|veja|olh?e|dê\s+uma\s+olhada\s+n?a)\s+(?:essa\s+|n?a\s+)?imagem\s+(.+)', re.IGNORECASE), analisar_imagem_regex),
 
     # Instalação/Desinstalação
-    (re.compile(r"\/?(?:jarvis\s+)?instalar\s+([a-zA-Z0-9\-\.]+)", re.IGNORECASE), lambda m, u: instalar_programa_via_cmd_admin(m.group(1), u)),
+    (re.compile(r"\/?(?:jarvis\s+)?instalar\s+([a-zA-Z0-9\-\.]+)", re.IGNORECASE), instalar_programa_comando),
     
     # Download
     (re.compile(r"\/?(?:jarvis\s+)?baixar\s+(?:o\s+)?video\s+(https?://[^\s]+)", re.IGNORECASE), lambda m, u: baixar_video_youtube(m.group(1), u)),
@@ -113,16 +156,16 @@ padroes = [
 
 from intent_manager import intent_manager
 
-def processar_comando(comando, username, token=None, modo="texto"):
+def processar_comando(comando, username, token=None, session_id=None, status=None):
     comando = comando.strip()
-    session_id = obter_session_id_por_token(token) if token else None
+    session_id = session_id or (obter_session_id_por_token(token) if token else None)
 
-    # --- FASE 1: REGEX (Ações Curtos e Rápidas) ---
+    # --- FASE 1: REGEX (Ações Curtas e Rápidas) ---
     for padrao, funcao in padroes:
         match = padrao.match(comando)
         if match:
             try:
-                return funcao(match, username)
+                return executar_handler(funcao, match, username, session_id, status)
             except Exception as e:
                 return f"Erro ao executar ação: {e}"
 
@@ -133,22 +176,43 @@ def processar_comando(comando, username, token=None, modo="texto"):
         
         # Mapeamento de Intenções Detectadas pela IA para Funções do Sistema
         if intent == "open_site" and param:
-            from commands.media import abrir_site
             return abrir_site(param, username)
-            
         elif intent == "play_music" and param:
-            from commands.media import tocar_musica_pywhatkit
             return tocar_musica_pywhatkit(param, username)
-            
         elif intent == "analyze_image" and param:
-            # Se a IA detectou o caminho na frase
             return analisar_imagem_comando(param, session_id, username)
-            
         elif intent == "show_agenda":
             return agenda_hoje(username)
-            
         elif intent == "check_time":
             return falar_hora(None, username)
+        elif intent == "check_date":
+            return falar_data(None, username)
+        elif intent == "search_google" and param:
+            return pesquisar_google_pywhatkit(param, username)
+        elif intent == "send_email":
+            return enviar_email(comando, username, status=status)
+        elif intent == "send_whatsapp":
+            return enviar_whatsapp(comando, username, status=status)
+        elif intent == "list_apps":
+            return listar_aplicativos_winapps(None, username)
+        elif intent == "uninstall_app" and param:
+            return desinstalar_app_winapps(param, username)
+        elif intent == "install_app" and param:
+            return instalar_programa_via_cmd_admin(param, username, status=status)
+        elif intent == "download_video" and param:
+            return baixar_video_youtube(param, username)
+        elif intent == "download_audio" and param:
+            return baixar_audio_youtube(param, username)
+        elif intent == "open_folder" and param:
+            return abrir_pasta(TextMatch(param), username)
+        elif intent == "analyze_file" and param:
+            return analisar_arquivos(TextMatch(param), username, session_id=session_id)
+        elif intent == "clean_trash":
+            return limpar_lixo(None, username, status=status)
+        elif intent == "check_ip":
+            return obter_ip(None, username)
+        elif intent == "add_task":
+            return adicionar_tarefa_interativa(comando, username, status=status)
 
     # --- FASE 3: CHAT LIVRE (IA Responde normalmente) ---
     if token and session_id:

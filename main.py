@@ -21,35 +21,18 @@ EXIT_COMMANDS = {"sair", "exit", "quit", "/sair", "/exit", "/quit"}
 LOGOUT_COMMANDS = {"logout", "/logout", "encerrar sessao", "trocar usuario"}
 HELP_COMMANDS = {"/", "ajuda", "help", "/ajuda", "/help", "/commands"}
 
-# (Mantida a sua lógica original de carregar dependências)
-def carregar_dependencias() -> None:
-    global processar_comando, falar, ouvir
-    global autenticar_usuario, criar_usuario, criar_sessao
-    global logout_usuario, obter_session_id_por_token
-    global verificar_autenticacao_persistente, verificar_usuario_existe
+from commands import processar_comando
+from commands.voice import falar, ouvir
+from memory import (
+    autenticar_usuario,
+    criar_usuario,
+    criar_sessao,
+    logout_usuario,
+    obter_session_id_por_token,
+    verificar_autenticacao_persistente,
+    verificar_usuario_existe,
+)
 
-    from commands import processar_comando as _processar_comando
-    from commands.voice import falar as _falar, ouvir as _ouvir
-    from memory import (
-        autenticar_usuario as _autenticar_usuario,
-        criar_usuario as _criar_usuario,
-        criar_sessao as _criar_sessao,
-        logout_usuario as _logout_usuario,
-        obter_session_id_por_token as _obter_session_id_por_token,
-        verificar_autenticacao_persistente as _verificar_autenticacao_persistente,
-        verificar_usuario_existe as _verificar_usuario_existe,
-    )
-
-    processar_comando = _processar_comando
-    falar = _falar
-    ouvir = _ouvir
-    autenticar_usuario = _autenticar_usuario
-    criar_usuario = _criar_usuario
-    criar_sessao = _criar_sessao
-    logout_usuario = _logout_usuario
-    obter_session_id_por_token = _obter_session_id_por_token
-    verificar_autenticacao_persistente = _verificar_autenticacao_persistente
-    verificar_usuario_existe = _verificar_usuario_existe
 
 def salvar_login_local(username: str, token: str) -> None:
     with open(SESSION_FILE, "w", encoding="utf-8") as f:
@@ -128,8 +111,8 @@ def login_cli():
             username = console.input("[dim]Usuário:[/dim] ").strip()
             senha = getpass("  Senha: ").strip()
             
-            print_status("Autenticando...")
-            token, session_id = autenticar_usuario(username, senha)
+            with console.status("[brand]⠋ Autenticando...[/brand]", spinner="dots12"):
+                token, session_id = autenticar_usuario(username, senha)
 
             if token:
                 session_id = session_id or obter_session_id_por_token(token) or criar_sessao(username, token)
@@ -146,8 +129,9 @@ def login_cli():
             return None
 
 def ler_comando_por_voz():
-    print_status("Ouvindo microfone...")
-    texto = ouvir()
+    with console.status("[user]🎙 Ouvindo microfone...[/user]", spinner="bouncingBar"):
+        texto = ouvir()
+        
     if not texto:
         print_warning("Nenhum áudio compreendido.")
         return None
@@ -156,8 +140,9 @@ def ler_comando_por_voz():
     return texto
 
 def processar_e_exibir(comando: str, username: str, token: str, veio_por_voz: bool = False) -> None:
-    print_status("Pensando...")
-    resposta = processar_comando(comando, username, token)
+    with console.status("[assistant]⠋ Processando requisição...[/assistant]", spinner="dots12") as status:
+        resposta = processar_comando(comando, username, token, None, status)
+        
     if resposta is None:
         resposta = "Comando executado com sucesso."
 
@@ -210,7 +195,6 @@ def loop_chat(username: str, token: str) -> str:
 
 def main() -> None:
     print_banner()
-    carregar_dependencias()
     exibir_status_servicos()
 
     while True:

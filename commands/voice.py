@@ -5,6 +5,12 @@ from queue import Queue
 from typing import Callable
 from commands.constants import Colors
 
+try:
+    import speech_recognition as sr
+    HAS_SR = True
+except ImportError:
+    HAS_SR = False
+
 class VoiceCommandSystem:
     def __init__(self):
         self.engine = self._init_voice_engine()
@@ -63,9 +69,7 @@ def falar(texto: str):
 
 def ouvir(timeout: int = 5, phrase_time_limit: int = 10, language: str = "pt-BR"):
     """Captura uma frase pelo microfone e retorna texto transcrito."""
-    try:
-        import speech_recognition as sr
-    except ImportError:
+    if not HAS_SR:
         print("SpeechRecognition nao esta instalado.")
         return None
 

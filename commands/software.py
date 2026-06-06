@@ -4,6 +4,16 @@ import winapps
 from commands.constants import Colors
 from commands.voice import falar
 from commands.permissions import is_admin, relancar_como_admin
+from cli_design import jarvis_ask
+
+RESPOSTAS_CONFIRMADAS = {"sim", "s", "yes", "y"}
+
+def confirmar_instalacao(programa, status=None):
+    resposta = jarvis_ask(
+        f"Vou instalar '{programa}' usando Chocolatey. Digite SIM para continuar.",
+        status,
+    )
+    return resposta.strip().lower() in RESPOSTAS_CONFIRMADAS
 
 #=========== Chocolatey ==========
 
@@ -33,8 +43,14 @@ def instalar_programa_choco(programa):
     except:
         return False
 
-def instalar_programa_via_cmd_admin(programa=None, username=None):
+def instalar_programa_via_cmd_admin(programa=None, username=None, status=None):
     """Função principal para instalar programas via choco com privilégios admin"""
+    if not programa:
+        return "Informe o nome do programa para instalar."
+
+    if not confirmar_instalacao(programa, status):
+        return "Operacao cancelada."
+
     if not is_admin():
         print(f"\n{Colors.YELLOW}Reiniciando o JARVIS como Administrador para instalar '{programa}'...{Colors.RESET}")
         falar("Vou reiniciar o sistema para instalar o programa solicitado.")

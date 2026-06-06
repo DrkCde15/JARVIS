@@ -4,6 +4,8 @@ import uuid
 import base64
 from datetime import datetime, timedelta
 from dotenv import load_dotenv
+from cryptography.fernet import Fernet, InvalidToken
+from passlib.context import CryptContext
 import pymysql # type: ignore
 from pymysql.cursors import DictCursor # type: ignore
 from jose import JWTError, jwt  # type: ignore
@@ -13,8 +15,9 @@ from queue import Queue
 # CONFIGURAÇÃO INICIAL
 # =====================================================
 
+load_dotenv(override=True)
+
 def carregar_config_mysql():
-    load_dotenv(override=True)
     config = {
         "host": os.getenv("MYSQL_HOST", "localhost"),
         "port": int(os.getenv("MYSQL_PORT", "3306")),
@@ -33,9 +36,12 @@ def carregar_config_mysql():
 # JWT
 # =====================================================
 
-SECRET_KEY = os.getenv("SECRET_KEY", "change-me-now")
+SECRET_KEY = os.getenv("SECRET_KEY")
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_DAYS = 30
+PASSWORD_CONTEXT = CryptContext(schemes=["bcrypt"], deprecated="auto")
+LEGACY_SHA256_HEX_LENGTH = 64
+SMTP_SECRET_PREFIX = "fernet:"
 
 # =====================================================
 # POOL PyMySQL
@@ -52,13 +58,13 @@ def init_pool():
         pool.put(conn)
     _connection_pool = pool
 
-try:
-    init_pool()
-except Exception as e:
-    print(f"❌ Erro MySQL: {e}")
-    _connection_pool = None
+def garantir_pool_mysql():
+    if _connection_pool is None:
+        init_pool()
+        criar_tabelas()
 
 def get_connection():
+    garantir_pool_mysql()
     if _connection_pool is None:
         raise RuntimeError("Pool MySQL não inicializado")
     return _connection_pool.get()
@@ -159,15 +165,35 @@ def criar_tabelas():
 
     for sql in tabelas:
         executar_query(sql, commit=True)
-if _connection_pool:
-    criar_tabelas()
-
 # =====================================================
 # AUTH / USUÁRIOS
 # =====================================================
 
 def hash_senha(senha: str):
+    return PASSWORD_CONTEXT.hash(senha)
+
+def hash_senha_legado(senha: str):
     return hashlib.sha256(senha.encode()).hexdigest()
+
+def eh_hash_legado(senha_hash: str):
+    if len(senha_hash) != LEGACY_SHA256_HEX_LENGTH:
+        return False
+    return all(char in "0123456789abcdef" for char in senha_hash.lower())
+
+def verificar_senha(senha: str, senha_hash: str):
+    if not senha_hash:
+        return False
+    if eh_hash_legado(senha_hash):
+        return hash_senha_legado(senha) == senha_hash
+    try:
+        return PASSWORD_CONTEXT.verify(senha, senha_hash)
+    except (TypeError, ValueError):
+        return False
+
+def senha_precisa_rehash(senha_hash: str):
+    if not senha_hash or eh_hash_legado(senha_hash):
+        return True
+    return PASSWORD_CONTEXT.needs_update(senha_hash)
 
 def criar_usuario(username: str, senha: str):
     executar_query(
@@ -178,6 +204,9 @@ def criar_usuario(username: str, senha: str):
     registrar_log(username, "Usuário criado")
 
 def criar_token_acesso(username: str) -> str:
+    if not SECRET_KEY:
+        raise RuntimeError("SECRET_KEY nao configurada no .env")
+
     payload = {
         "sub": username,
         "iat": datetime.utcnow(),
@@ -186,6 +215,9 @@ def criar_token_acesso(username: str) -> str:
     return jwt.encode(payload, SECRET_KEY, algorithm=ALGORITHM)
 
 def verificar_token(token: str):
+    if not SECRET_KEY:
+        return None
+
     try:
         payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
         return payload.get("sub")
@@ -199,8 +231,15 @@ def autenticar_usuario(username: str, senha: str):
         fetchone=True,
     )
 
-    if not user or user["senha_hash"] != hash_senha(senha):
+    if not user or not verificar_senha(senha, user["senha_hash"]):
         return None, None
+
+    if senha_precisa_rehash(user["senha_hash"]):
+        executar_query(
+            "UPDATE usuarios SET senha_hash=%s WHERE username=%s",
+            (hash_senha(senha), username),
+            commit=True,
+        )
 
     token = criar_token_acesso(username)
     session_id = criar_sessao(username, token)
@@ -311,7 +350,7 @@ def atualizar_senha_usuario(username: str, senha_atual: str, nova_senha: str):
         fetchone=True
     )
     
-    if not user or user["senha_hash"] != hash_senha(senha_atual):
+    if not user or not verificar_senha(senha_atual, user["senha_hash"]):
         return False
     
     executar_query(
@@ -372,29 +411,6 @@ def atualizar_username_usuario(username_atual: str, novo_username: str):
 # =====================================================
 # CHAT MEMORY
 # =====================================================
-
-def adicionar_mensagem_chat(session_id: str, message: str, msg_type: str):
-    executar_query(
-        """
-        INSERT INTO message_store (id, session_id, message, type)
-        VALUES (%s,%s,%s,%s)
-        """,
-        (str(uuid.uuid4()), session_id, message, msg_type),
-        commit=True,
-    )
-def obter_historico_chat(session_id: str, limit: int = 10):
-    rows = executar_query(
-        """
-        SELECT message, type, timestamp
-        FROM message_store
-        WHERE session_id=%s
-        ORDER BY timestamp DESC
-        LIMIT %s
-        """,
-        (session_id, limit),
-        fetch=True,
-    )
-    return list(reversed(rows)) if rows else []
 
 def adicionar_mensagem_chat(session_id: str, message: str, msg_type: str):
     """Adiciona uma nova interação ao banco MySQL."""
@@ -462,8 +478,31 @@ def registrar_log(username: str, acao: str):
 # SMTP
 # =====================================================
 
+def criar_cipher_smtp():
+    if not SECRET_KEY:
+        raise RuntimeError("SECRET_KEY nao configurada no .env")
+    key = base64.urlsafe_b64encode(hashlib.sha256(SECRET_KEY.encode()).digest())
+    return Fernet(key)
+
+def proteger_senha_smtp(senha: str):
+    token = criar_cipher_smtp().encrypt(senha.encode()).decode()
+    return f"{SMTP_SECRET_PREFIX}{token}"
+
+def revelar_senha_smtp(valor_salvo: str):
+    if valor_salvo.startswith(SMTP_SECRET_PREFIX):
+        token = valor_salvo.removeprefix(SMTP_SECRET_PREFIX)
+        try:
+            return criar_cipher_smtp().decrypt(token.encode()).decode()
+        except InvalidToken:
+            return None
+
+    try:
+        return base64.b64decode(valor_salvo).decode()
+    except (ValueError, UnicodeDecodeError):
+        return None
+
 def salvar_senha_smtp(username: str, email: str, senha: str):
-    senha_b64 = base64.b64encode(senha.encode()).decode()
+    senha_b64 = proteger_senha_smtp(senha)
     executar_query(
         """
         INSERT INTO smtp_credentials (username, email, senha_b64)
@@ -484,7 +523,15 @@ def obter_senha_smtp(username: str):
     )
     if not row:
         return None, None
-    return row["email"], base64.b64decode(row["senha_b64"]).decode()
+
+    senha = revelar_senha_smtp(row["senha_b64"])
+    if not senha:
+        return row["email"], None
+
+    if not row["senha_b64"].startswith(SMTP_SECRET_PREFIX):
+        salvar_senha_smtp(username, row["email"], senha)
+
+    return row["email"], senha
 
 # =====================================================
 # FUNÇÕES ADICIONAIS

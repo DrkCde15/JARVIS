@@ -2,23 +2,48 @@ import os
 import subprocess
 import shutil
 from datetime import datetime
+import socket
+import requests
 from commands.constants import Colors
+from commands.voice import falar
+from cli_design import jarvis_ask
+
+RESPOSTAS_CONFIRMADAS = {"sim", "s", "yes", "y"}
+
+def confirmar_acao_sensivel(pergunta, status=None):
+    resposta = jarvis_ask(f"{pergunta} Digite SIM para continuar.", status)
+    return resposta.strip().lower() in RESPOSTAS_CONFIRMADAS
 
 def verificar_atualizacoes(match, username):
     try:
-        subprocess.run("powershell -Command \"Get-WindowsUpdate\"", shell=True)
+        subprocess.run(["powershell", "-Command", "Get-WindowsUpdate"], check=False)
         return "Verificando atualizações do sistema, senhor."
     except Exception as e:
         return f"Erro ao verificar atualizações: {e}"
 
-def atualizar_sistema(match, username):
+def atualizar_sistema(match, username, status=None):
+    if not confirmar_acao_sensivel(
+        "Esta acao pode instalar atualizacoes e reiniciar o computador.",
+        status,
+    ):
+        return "Operacao cancelada."
+
     try:
-        subprocess.run("powershell -Command \"Install-WindowsUpdate -AcceptAll -AutoReboot\"", shell=True)
+        subprocess.run(
+            ["powershell", "-Command", "Install-WindowsUpdate -AcceptAll -AutoReboot"],
+            check=False,
+        )
         return "Atualizações sendo instaladas, senhor. O sistema pode reiniciar automaticamente."
     except Exception as e:
         return f"Erro ao atualizar sistema: {e}"
 
-def limpar_lixo(match, username):
+def limpar_lixo(match, username, status=None):
+    if not confirmar_acao_sensivel(
+        "Vou apagar arquivos temporarios do usuario e do Windows.",
+        status,
+    ):
+        return "Operacao cancelada."
+
     try:
         pastas = [
             os.getenv('TEMP'),
@@ -40,19 +65,14 @@ def limpar_lixo(match, username):
         return f"Erro ao limpar arquivos: {e}"
 
 def falar_hora(match, username):
-    from commands.voice import falar
     hora = datetime.now().strftime('%H:%M')
     falar(f"Agora são {hora}")
     return f"Agora são {hora}"
 
 def falar_data(match, username):
-    from commands.voice import falar
     data = datetime.now().strftime('%d/%m/%Y')
     falar(f"Hoje é dia {data}")
     return f"Hoje é dia {data}"
-
-import socket
-import requests
 
 def obter_ip(match, username):
     try:
