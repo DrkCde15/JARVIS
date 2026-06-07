@@ -32,27 +32,27 @@ JARVIS_LOGO = r"""
 
 def print_banner() -> None:
     """Banner estilizado com ASCII Art e Panel."""
-    logo_text = Text(JARVIS_LOGO, style="brand", justify="center")
-    subtitle = Text("INTELLIGENT SYSTEM ASSISTANT", style="dim", justify="center")
+    logo_text = Text(JARVIS_LOGO, style="error", justify="center")
+    subtitle = Text("INTELLIGENT SYSTEM ASSISTANT", style="error", justify="center")
     
     panel = Panel(
         Align.center(logo_text + Text("\n") + subtitle),
-        border_style="brand",
+        border_style="error",
         padding=(1, 2),
         title="[bold bright_magenta]v2.0[/bold bright_magenta]",
         title_align="right"
     )
     console.print()
     console.print(panel)
-    console.print(Align.center("[dim]Digite sua mensagem ou '/help' para ver os comandos. Para sair, digite 'sair'.[/dim]\n"))
+    console.print(Align.center("[error]Digite sua mensagem ou '/help' para ver os comandos. Para sair, digite 'sair'.[/error]\n"))
 
 def print_help() -> None:
     """Menu de ajuda usando Table do Rich."""
-    table = Table(title="[brand]Centro de Comandos J.A.R.V.I.S[/brand]", show_header=True, header_style="bold bright_cyan", border_style="dim")
+    table = Table(title="[error]Centro de Comandos J.A.R.V.I.S[/error]", show_header=True, header_style="error", border_style="error")
     
-    table.add_column("Comando", style="command")
-    table.add_column("Descrição", style="dim")
-    table.add_column("Tipo", style="highlight")
+    table.add_column("Comando", style="error")
+    table.add_column("Descrição", style="error")
+    table.add_column("Tipo", style="error")
     
     commands = [
         ("/", "Mostra este menu de ajuda", "Sistema"),
@@ -69,9 +69,9 @@ def print_help() -> None:
     console.print(Align.center(table))
     
     # Exemplos naturais em outra tabela minimalista
-    examples_table = Table(show_header=False, box=None, border_style="dim", title="\n[dim]Exemplos de Comandos Naturais[/dim]")
+    examples_table = Table(show_header=False, box=None, border_style="error", title="\n[error]Exemplos de Comandos Naturais[/error]", title_style="error")
     examples_table.add_column("Comando", style="italic cyan")
-    examples_table.add_column("Ação", style="dim")
+    examples_table.add_column("Ação", style="error")
     
     examples = [
         ('"ouvir"', "Ativa o microfone"),
@@ -106,7 +106,7 @@ def print_assistant_response(text: str) -> None:
         md,
         title="[assistant]🤖 JARVIS[/assistant]",
         title_align="left",
-        border_style="assistant",
+        border_style="error",
         padding=(1, 2)
     )
     console.print()
@@ -114,13 +114,13 @@ def print_assistant_response(text: str) -> None:
     console.print()
 
 def print_voice_input(text: str) -> None:
-    console.print(f"[user]🎙 Você (Voz):[/user] [dim]{text}[/dim]")
+    console.print(f"[user]🎙 Você (Voz):[/user] [error]{text}[/error]")
 
 def get_prompt_string(prefix: str = "Você") -> str:
     """Retorna o estilo do prompt (Ex: Você ❯ )"""
     if prefix == "Você":
-        return f"\n[user]{prefix}[/user] [brand]❯[/brand] "
-    return f"\n[brand]{prefix} ❯[/brand] "
+        return f"\n[user]{prefix}[/user] [error]❯[/error] "
+    return f"\n[error]{prefix} ❯[/error] "
 
 def jarvis_ask(pergunta: str, status=None) -> str:
     """Faz uma pergunta ao usuário pausando o spinner e usando a voz, se possível."""

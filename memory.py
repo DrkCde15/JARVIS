@@ -5,7 +5,7 @@ import base64
 from datetime import datetime, timedelta
 from dotenv import load_dotenv
 from cryptography.fernet import Fernet, InvalidToken
-from passlib.context import CryptContext
+import bcrypt
 import pymysql # type: ignore
 from pymysql.cursors import DictCursor # type: ignore
 from jose import JWTError, jwt  # type: ignore
@@ -16,6 +16,12 @@ from queue import Queue
 # =====================================================
 
 load_dotenv(override=True)
+
+def obter_dias_expiracao_token():
+    try:
+        return int(os.getenv("ACCESS_TOKEN_EXPIRE_DAYS", "365"))
+    except (TypeError, ValueError):
+        return 365
 
 def carregar_config_mysql():
     config = {
@@ -38,9 +44,9 @@ def carregar_config_mysql():
 
 SECRET_KEY = os.getenv("SECRET_KEY")
 ALGORITHM = "HS256"
-ACCESS_TOKEN_EXPIRE_DAYS = 30
-PASSWORD_CONTEXT = CryptContext(schemes=["bcrypt"], deprecated="auto")
+ACCESS_TOKEN_EXPIRE_DAYS = obter_dias_expiracao_token()
 LEGACY_SHA256_HEX_LENGTH = 64
+BCRYPT_PREFIXES = ("$2a$", "$2b$", "$2y$")
 SMTP_SECRET_PREFIX = "fernet:"
 
 # =====================================================
@@ -170,7 +176,7 @@ def criar_tabelas():
 # =====================================================
 
 def hash_senha(senha: str):
-    return PASSWORD_CONTEXT.hash(senha)
+    return bcrypt.hashpw(senha.encode(), bcrypt.gensalt()).decode()
 
 def hash_senha_legado(senha: str):
     return hashlib.sha256(senha.encode()).hexdigest()
@@ -185,15 +191,17 @@ def verificar_senha(senha: str, senha_hash: str):
         return False
     if eh_hash_legado(senha_hash):
         return hash_senha_legado(senha) == senha_hash
+    if not senha_hash.startswith(BCRYPT_PREFIXES):
+        return False
     try:
-        return PASSWORD_CONTEXT.verify(senha, senha_hash)
+        return bcrypt.checkpw(senha.encode(), senha_hash.encode())
     except (TypeError, ValueError):
         return False
 
 def senha_precisa_rehash(senha_hash: str):
     if not senha_hash or eh_hash_legado(senha_hash):
         return True
-    return PASSWORD_CONTEXT.needs_update(senha_hash)
+    return not senha_hash.startswith(BCRYPT_PREFIXES)
 
 def criar_usuario(username: str, senha: str):
     executar_query(

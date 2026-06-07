@@ -22,7 +22,7 @@ python-dotenv
 pyfiglet
 python-jose[cryptography]
 cryptography
-passlib[bcrypt]
+bcrypt
 python-multipart
 pymysql
 customtkinter

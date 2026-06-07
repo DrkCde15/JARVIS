@@ -27,9 +27,9 @@ from memory import (
     autenticar_usuario,
     criar_usuario,
     criar_sessao,
+    get_usuario_ativo,
     logout_usuario,
     obter_session_id_por_token,
-    verificar_autenticacao_persistente,
     verificar_usuario_existe,
 )
 
@@ -65,7 +65,7 @@ def exibir_status_servicos() -> None:
         modelo = status.get("modelo", "desconhecido")
         console.print(f"[dim]ℹ Groq ativo ({modelo})[/dim]\n")
 
-def registrar_usuario_cli() -> None:
+def registrar_usuario_cli():
     console.print("\n[brand] criar conta[/brand]")
     username = console.input("[dim]Novo usuário:[/dim] ").strip()
     if not username:
@@ -84,14 +84,27 @@ def registrar_usuario_cli() -> None:
         return
 
     criar_usuario(username, senha)
-    print_success("Conta criada com sucesso! Prossiga com o login.")
+    token, session_id = autenticar_usuario(username, senha)
+    if not token:
+        print_success("Conta criada com sucesso! Prossiga com o login.")
+        return None
+
+    salvar_login_local(username, token)
+    print_success(f"Conta criada. Sessao iniciada como [bold]{username}[/bold].")
+    return username, token, session_id
 
 def tentar_auto_login():
     username, token = carregar_login_local()
-    if username and token and verificar_autenticacao_persistente(token):
-        session_id = obter_session_id_por_token(token) or criar_sessao(username, token)
-        print_success(f"Sessão restaurada: [bold]{username}[/bold]")
-        return username, token, session_id
+    if username and token:
+        usuario_ativo = get_usuario_ativo(token)
+        if not usuario_ativo:
+            limpar_login_local()
+            return None
+
+        session_id = obter_session_id_por_token(token) or criar_sessao(usuario_ativo, token)
+        salvar_login_local(usuario_ativo, token)
+        print_success(f"Sessao restaurada: [bold]{usuario_ativo}[/bold]")
+        return usuario_ativo, token, session_id
     return None
 
 def login_cli():
@@ -123,7 +136,9 @@ def login_cli():
             print_error("Falha na autenticação. Verifique suas credenciais.")
 
         elif opcao == "criar conta":
-            registrar_usuario_cli()
+            sessao_criada = registrar_usuario_cli()
+            if sessao_criada:
+                return sessao_criada
 
         elif opcao == "sair":
             return None
