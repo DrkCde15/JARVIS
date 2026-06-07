@@ -126,12 +126,12 @@ class IntentManager:
 
         return "chat", None
 
-    def classify_intent(self, text):
+    def classify_intent(self, text, username=None):
         intent, param = self.classify_with_spacy(text)
         if intent != "chat":
             return intent, param
 
-        brain = ai_service.brain
+        brain = ai_service.inicializar_brain(username) or ai_service.brain
         if not brain:
             return "chat", None
 

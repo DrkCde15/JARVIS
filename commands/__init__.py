@@ -9,7 +9,8 @@ from commands.software import (
     desinstalar_app_winapps,
     instalar_programa_via_cmd_admin,
     desinstalar_programa,
-    abrir_aplicativo_winapps
+    abrir_aplicativo_winapps,
+    pesquisar_no_navegador
 )
 from commands.communication import (
     enviar_email,
@@ -91,11 +92,68 @@ def instalar_programa_comando(match, username, status=None):
     return instalar_programa_via_cmd_admin(match.group(1), username, status=status)
 
 
-def executar_handler(funcao, match, username, session_id=None, status=None):
+def iniciar_app_e_pesquisar_comando(match, username):
+    app = match.group(1).strip()
+    query = match.group(2).strip()
+    return pesquisar_no_navegador(query, app, anonimo=False, username=username)
+
+
+def pesquisar_navegador_comando(match, username):
+    query = match.group(1).strip()
+    navegador = match.group(2).strip() if match.lastindex and match.lastindex >= 2 and match.group(2) else None
+    return pesquisar_no_navegador(query, navegador, anonimo=False, username=username)
+
+
+def pesquisar_anonimo_abrir_comando(match, username):
+    navegador = match.group(1).strip() if match.group(1) else None
+    query = match.group(2).strip()
+    return pesquisar_no_navegador(query, navegador, anonimo=True, username=username)
+
+
+def pesquisar_anonimo_final_comando(match, username):
+    query = match.group(1).strip()
+    navegador = match.group(2).strip() if match.lastindex and match.group(2) else None
+    return pesquisar_no_navegador(query, navegador, anonimo=True, username=username)
+
+
+def executar_agente_comando(match, username, token=None, session_id=None, status=None):
+    from agent import run_agent_command
+
+    return run_agent_command(match, username, token=token, session_id=session_id, status=status)
+
+
+def deve_usar_agente(comando: str):
+    texto = comando.strip().lower()
+    if not texto or texto.startswith("/"):
+        return False
+
+    action_words = {
+        "liste", "listar", "mostre", "mostrar", "procure", "procurar",
+        "pesquise", "pesquisar", "busque", "buscar",
+        "encontre", "encontrar", "analise", "analisar", "resuma", "resumir",
+        "abra", "abrir", "inicie", "iniciar", "inicia", "comece", "comecar", "começar",
+        "organize", "organizar", "crie", "criar",
+        "execute", "executar", "rode", "rodar", "limpe", "limpar",
+        "verifique", "verificar", "mova", "mover",
+    }
+    shell_words = {"powershell", "ps1", "terminal", "shell", "comando"}
+    tokens = set(re.findall(r"\w+", texto))
+    action_count = len(tokens & action_words)
+
+    if tokens & shell_words and tokens & action_words:
+        return True
+
+    has_connector = bool(re.search(r"\b(e|depois|em seguida|entao|então)\b", texto))
+    return action_count >= 2 and has_connector
+
+
+def executar_handler(funcao, match, username, token=None, session_id=None, status=None):
     fn: Callable[..., Any] = cast(Callable[..., Any], funcao)
     parametros = signature(fn).parameters
     kwargs = {}
 
+    if "token" in parametros:
+        kwargs["token"] = token
     if "session_id" in parametros:
         kwargs["session_id"] = session_id
     if "status" in parametros:
@@ -120,6 +178,11 @@ padroes = [
     (re.compile(r'\/?(?:jarvis\s+)?(?:enviar\s+)?whatsapp\b', re.IGNORECASE), enviar_whatsapp),
     
     # YouTube e Pesquisa
+    (re.compile(r'\/?(?:jarvis\s+)?(?:abra|abrir|inicie|iniciar)\s+(?:uma\s+)?(?:guia|aba|janela)\s+(?:anonima|an[oô]nima|incognita|inc[oó]gnita)(?:\s+(?:no|na|pelo|pela)\s+(?:navegador\s+)?([a-zA-Z0-9\.\-_ ]+?))?\s+e\s+(?:pesquise|pesquisar|procure|procurar)\s+(?:sobre\s+|por\s+)?(.+)$', re.IGNORECASE), pesquisar_anonimo_abrir_comando),
+    (re.compile(r'\/?(?:jarvis\s+)?(?:pesquise|pesquisar|procure|procurar)\s+(?:sobre\s+|por\s+)?(.+?)\s+(?:em|na|numa|em uma)\s+(?:guia|aba|janela)\s+(?:anonima|an[oô]nima|incognita|inc[oó]gnita)(?:\s+(?:no|na|pelo|pela)\s+(?:navegador\s+)?([a-zA-Z0-9\.\-_ ]+))?$', re.IGNORECASE), pesquisar_anonimo_final_comando),
+    (re.compile(r'\/?(?:jarvis\s+)?(?:inicie|iniciar|abra|abrir)\s+(?:o\s+)?([a-zA-Z0-9\.\-_ ]+?)\s+e\s+(?:pesquise|pesquisar|procure|procurar)\s+(?:sobre\s+|por\s+)?(.+)$', re.IGNORECASE), iniciar_app_e_pesquisar_comando),
+    (re.compile(r'\/?(?:jarvis\s+)?(?:pesquise|pesquisar|procure|procurar)\s+(?:sobre\s+|por\s+)?(.+?)\s+(?:no|na|pelo|pela)\s+(?:navegador\s+)?(brave|chrome|google chrome|edge|microsoft edge|firefox|opera)\b$', re.IGNORECASE), pesquisar_navegador_comando),
+    (re.compile(r'\/?(?:jarvis\s+)?(?:pesquise|pesquisar|procurar|procure|busque|buscar)\s+(?:sobre\s+|por\s+)?(.+?)(?:\s+no\s+google)?$', re.IGNORECASE), pesquisar_navegador_comando),
     (re.compile(r'\/?(?:jarvis\s+)?(?:pode\s+)?tocar\s+(?:a\s+música\s+)?(.+)', re.IGNORECASE), tocar_musica_pywhatkit),
     (re.compile(r'\/?(?:jarvis\s+)?(?:pesquisar\s+|procure\s+por\s+|o\s+que\s+é\s+)(.+?)(?:\s+no\s+google)?$', re.IGNORECASE), pesquisar_google_pywhatkit),
     (re.compile(r'\/?(?:jarvis\s+)?(?:abr[ei]\s+o\s+site\s+|visite\s+o\s+site\s+|vá\s+para\s+o\s+site\s+)(.+)', re.IGNORECASE), abrir_site),
@@ -148,6 +211,8 @@ padroes = [
     (re.compile(r'\/?(?:jarvis\s+)?(?:marcar|definir)\s+(?:como\s+)?conclu[íi]da\s+(.+)', re.IGNORECASE), marcar_como_concluida_comando),
     
     # Sistema
+    (re.compile(r'\/?(?:jarvis\s+)?(?:inicie|iniciar|comece|come[çc]ar)\s+(?:uma\s+)?(?:gravacao|gravação|captura|recording)\b', re.IGNORECASE), iniciar_gravacao_sistema),
+    (re.compile(r'\/?(?:jarvis\s+)?(?:pare|parar|finalize|finalizar|encerre|encerrar)\s+(?:a\s+)?(?:gravacao|gravação|captura|recording)\b', re.IGNORECASE), parar_gravacao_sistema),
     (re.compile(r'\/?(?:jarvis\s+)?(?:limpar\s+)?lixo\b', re.IGNORECASE), limpar_lixo),
     (re.compile(r'\/?(?:jarvis\s+)?(?:que\s+)?horas?\s+(?:são|é)\b', re.IGNORECASE), falar_hora),
     (re.compile(r'\/?(?:jarvis\s+)?(?:qual\s+o\s+meu\s+)?ip\b', re.IGNORECASE), obter_ip),
@@ -165,14 +230,17 @@ def processar_comando(comando, username, token=None, session_id=None, status=Non
         match = padrao.match(comando)
         if match:
             try:
-                return executar_handler(funcao, match, username, session_id, status)
+                return executar_handler(funcao, match, username, token, session_id, status)
             except Exception as e:
                 return f"Erro ao executar ação: {e}"
+
+    if deve_usar_agente(comando):
+        return executar_agente_comando(comando, username, token, session_id, status)
 
     # --- FASE 2: INTENT CLASSIFIER (Function Calling Flexível) ---
     # Só rodamos a classificação se for texto livre e não tiver dado match na Regex
     if not comando.startswith("/") and len(comando) > 3:
-        intent, param = intent_manager.classify_intent(comando)
+        intent, param = intent_manager.classify_intent(comando, username=username)
         
         # Mapeamento de Intenções Detectadas pela IA para Funções do Sistema
         if intent == "open_site" and param:

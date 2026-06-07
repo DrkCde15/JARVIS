@@ -1,14 +1,25 @@
 import os
 import subprocess
 import shutil
+import threading
+import time
 from datetime import datetime
+from pathlib import Path
 import socket
 import requests
+from PIL import ImageGrab
 from commands.constants import Colors
 from commands.voice import falar
 from cli_design import jarvis_ask
 
 RESPOSTAS_CONFIRMADAS = {"sim", "s", "yes", "y"}
+RECORDINGS_DIR = Path.home() / "Videos" / "JARVIS_Recordings"
+RECORDING_INTERVAL_SECONDS = 0.5
+MAX_RECORDING_FRAMES = 600
+_recording_stop_event = threading.Event()
+_recording_thread = None
+_recording_frames = []
+_recording_started_at = None
 
 def confirmar_acao_sensivel(pergunta, status=None):
     resposta = jarvis_ask(f"{pergunta} Digite SIM para continuar.", status)
@@ -101,3 +112,66 @@ def iniciar_gravacao_sistema(username=None):
 
 def parar_gravacao_sistema(username=None):
     return "Gravação finalizada."
+
+
+def capturar_frame_gravacao():
+    frame = ImageGrab.grab().convert("RGB")
+    width, height = frame.size
+    return frame.resize((max(1, width // 2), max(1, height // 2)))
+
+
+def gravar_tela_em_background():
+    global _recording_frames
+    while not _recording_stop_event.is_set() and len(_recording_frames) < MAX_RECORDING_FRAMES:
+        try:
+            _recording_frames.append(capturar_frame_gravacao())
+        except Exception:
+            break
+        time.sleep(RECORDING_INTERVAL_SECONDS)
+
+
+def iniciar_gravacao_sistema(match=None, username=None):
+    global _recording_thread, _recording_frames, _recording_started_at
+
+    if _recording_thread and _recording_thread.is_alive():
+        return "Uma gravacao de tela ja esta em andamento."
+
+    _recording_stop_event.clear()
+    _recording_frames = []
+    _recording_started_at = datetime.now()
+    _recording_thread = threading.Thread(target=gravar_tela_em_background, daemon=True)
+    _recording_thread.start()
+    return "Gravacao de tela iniciada. Diga 'jarvis pare a gravacao' para finalizar."
+
+
+def parar_gravacao_sistema(match=None, username=None):
+    global _recording_thread, _recording_frames, _recording_started_at
+
+    if not _recording_thread or not _recording_thread.is_alive():
+        return "Nao ha gravacao de tela em andamento."
+
+    _recording_stop_event.set()
+    _recording_thread.join(timeout=3)
+
+    if not _recording_frames:
+        return "Gravacao finalizada, mas nenhum frame foi capturado."
+
+    RECORDINGS_DIR.mkdir(parents=True, exist_ok=True)
+    started_at = _recording_started_at or datetime.now()
+    output_path = RECORDINGS_DIR / f"jarvis_recording_{started_at.strftime('%Y%m%d_%H%M%S')}.gif"
+
+    first_frame, *extra_frames = _recording_frames
+    first_frame.save(
+        output_path,
+        save_all=True,
+        append_images=extra_frames,
+        duration=int(RECORDING_INTERVAL_SECONDS * 1000),
+        loop=0,
+    )
+
+    frame_count = len(_recording_frames)
+    _recording_thread = None
+    _recording_frames = []
+    _recording_started_at = None
+
+    return f"Gravacao finalizada com {frame_count} frames. Arquivo salvo em: {output_path}"

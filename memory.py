@@ -167,6 +167,47 @@ def criar_tabelas():
             FOREIGN KEY (username) REFERENCES usuarios(username) ON DELETE CASCADE
         ) ENGINE=InnoDB;
         """,
+        """
+        CREATE TABLE IF NOT EXISTS ai_credentials (
+            username VARCHAR(100) PRIMARY KEY,
+            provider VARCHAR(50) NOT NULL,
+            api_key_secret TEXT NOT NULL,
+            model_name VARCHAR(255) NOT NULL,
+            base_url VARCHAR(500),
+            created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+            updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+            FOREIGN KEY (username) REFERENCES usuarios(username) ON DELETE CASCADE
+        ) ENGINE=InnoDB;
+        """,
+        """
+        CREATE TABLE IF NOT EXISTS agent_tasks (
+            id VARCHAR(36) PRIMARY KEY,
+            username VARCHAR(100) NOT NULL,
+            objective TEXT NOT NULL,
+            status VARCHAR(30) NOT NULL,
+            plan_json LONGTEXT,
+            result TEXT,
+            error TEXT,
+            created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+            updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+            INDEX idx_agent_tasks_user_status (username, status),
+            FOREIGN KEY (username) REFERENCES usuarios(username) ON DELETE CASCADE
+        ) ENGINE=InnoDB;
+        """,
+        """
+        CREATE TABLE IF NOT EXISTS agent_steps (
+            id VARCHAR(36) PRIMARY KEY,
+            task_id VARCHAR(36) NOT NULL,
+            step_index INT NOT NULL,
+            tool_name VARCHAR(100) NOT NULL,
+            tool_args LONGTEXT,
+            status VARCHAR(30) NOT NULL,
+            observation LONGTEXT,
+            created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+            INDEX idx_agent_steps_task (task_id, step_index),
+            FOREIGN KEY (task_id) REFERENCES agent_tasks(id) ON DELETE CASCADE
+        ) ENGINE=InnoDB;
+        """,
     ]
 
     for sql in tabelas:
@@ -540,6 +581,114 @@ def obter_senha_smtp(username: str):
         salvar_senha_smtp(username, row["email"], senha)
 
     return row["email"], senha
+
+# =====================================================
+# CREDENCIAIS DE IA
+# =====================================================
+
+def salvar_credenciais_ia(username: str, provider: str, api_key: str, model_name: str, base_url: str | None = None):
+    api_key_secret = proteger_senha_smtp(api_key)
+    executar_query(
+        """
+        INSERT INTO ai_credentials (username, provider, api_key_secret, model_name, base_url)
+        VALUES (%s,%s,%s,%s,%s)
+        ON DUPLICATE KEY UPDATE
+        provider=%s, api_key_secret=%s, model_name=%s, base_url=%s
+        """,
+        (
+            username,
+            provider,
+            api_key_secret,
+            model_name,
+            base_url,
+            provider,
+            api_key_secret,
+            model_name,
+            base_url,
+        ),
+        commit=True,
+    )
+    registrar_log(username, f"Credenciais de IA atualizadas: {provider}/{model_name}")
+
+def obter_credenciais_ia(username: str):
+    row = executar_query(
+        """
+        SELECT provider, api_key_secret, model_name, base_url
+        FROM ai_credentials WHERE username=%s
+        """,
+        (username,),
+        fetchone=True,
+    )
+    if not row:
+        return None
+
+    api_key = revelar_senha_smtp(row["api_key_secret"])
+    if not api_key:
+        return None
+
+    return {
+        "provider": row["provider"],
+        "api_key": api_key,
+        "model_name": row["model_name"],
+        "base_url": row["base_url"],
+    }
+
+def usuario_tem_credenciais_ia(username: str) -> bool:
+    return obter_credenciais_ia(username) is not None
+
+# =====================================================
+# AGENT TASKS
+# =====================================================
+
+def criar_tarefa_agente(username: str, objective: str):
+    task_id = str(uuid.uuid4())
+    executar_query(
+        """
+        INSERT INTO agent_tasks (id, username, objective, status)
+        VALUES (%s,%s,%s,%s)
+        """,
+        (task_id, username, objective, "running"),
+        commit=True,
+    )
+    registrar_log(username, f"Tarefa agente criada: {task_id}")
+    return task_id
+
+def atualizar_tarefa_agente(task_id: str, *, status=None, plan_json=None, result=None, error=None):
+    campos = []
+    params = []
+
+    if status is not None:
+        campos.append("status=%s")
+        params.append(status)
+    if plan_json is not None:
+        campos.append("plan_json=%s")
+        params.append(plan_json)
+    if result is not None:
+        campos.append("result=%s")
+        params.append(result)
+    if error is not None:
+        campos.append("error=%s")
+        params.append(error)
+
+    if not campos:
+        return True
+
+    params.append(task_id)
+    return executar_query(
+        f"UPDATE agent_tasks SET {', '.join(campos)} WHERE id=%s",
+        tuple(params),
+        commit=True,
+    )
+
+def registrar_passo_agente(task_id: str, step_index: int, tool_name: str, tool_args: str, status: str, observation: str):
+    executar_query(
+        """
+        INSERT INTO agent_steps (id, task_id, step_index, tool_name, tool_args, status, observation)
+        VALUES (%s,%s,%s,%s,%s,%s,%s)
+        """,
+        (str(uuid.uuid4()), task_id, step_index, tool_name, tool_args, status, observation),
+        commit=True,
+    )
 
 # =====================================================
 # FUNÇÕES ADICIONAIS

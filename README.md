@@ -26,6 +26,8 @@ Assistente pessoal em Python com interface CLI, automacao de tarefas, mensageria
 - Analise de conteudo de sites (web scraping)
 - Analise de arquivos (TXT, PDF, DOCX, XLSX, CSV, JSON, PPTX)
 - Agenda com persistencia
+- Modo agente com planejamento, ferramentas e registro de tarefas
+- Credenciais de IA por usuario, com suporte a provedores OpenAI-compatible
 
 ## Observacao importante sobre imagem
 
@@ -91,10 +93,37 @@ ouvir
 
 para ativar o microfone e processar o comando falado.
 
+### Provedores de IA
+
+Ao criar conta ou entrar com um usuario sem credenciais salvas, o JARVIS pergunta:
+
+- provedor: `groq`, `openai`, `openrouter` ou `custom`
+- chave da API
+- modelo
+- base URL opcional
+
+Use `/api` para trocar essas credenciais depois.
+
+### Tarefas compostas
+
+No modo normal, o JARVIS detecta pedidos com varias etapas e usa o agente automaticamente.
+
+Exemplo:
+
+```text
+liste meus arquivos PDF em Documentos e analise o mais relevante
+pesquise sobre linux
+pesquise sobre linux no brave
+abra guia anonima no brave e pesquise sobre linux
+inicie o brave e pesquise sobre linux
+```
+
+O agente planeja uma etapa por vez, executa ferramentas permitidas, registra a tarefa no MySQL e pede confirmacao antes de acoes sensiveis. Para comandos PowerShell, ele mostra o comando exato e so executa depois de autorizacao.
+
 ## Estrutura resumida
 
 - `main.py`: CLI, login e fluxo principal
-- `ai_service.py`: integracao com Groq e geracao de resposta
+- `ai_service.py`: integracao com provedores OpenAI-compativeis e geracao de resposta
 - `commands/`: comandos de automacao, analise e utilitarios
 - `memory.py`: persistencia de sessoes, mensagens e logs
 

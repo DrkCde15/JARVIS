@@ -26,7 +26,11 @@ def enviar_whatsapp(match, username=None, status=None):
         texto_original = match if isinstance(match, str) else (match.group(0) if hasattr(match, 'group') else "")
 
         # Tenta extrair os parâmetros da mensagem natural do usuário
-        params = extrair_params_ia(texto_original, ["numero", "mensagem"]) if texto_original else {}
+        params = extrair_params_ia(
+            texto_original,
+            ["numero", "mensagem"],
+            username=username,
+        ) if texto_original else {}
 
         numero = params.get("numero") or ""
         mensagem_texto = params.get("mensagem") or ""
@@ -124,7 +128,8 @@ def enviar_email(match=None, username=None, status=None):
     texto_original = match if isinstance(match, str) else (match.group(0) if hasattr(match, 'group') else "")
     params = extrair_params_ia(
         texto_original,
-        ["destinatario", "assunto", "corpo"]
+        ["destinatario", "assunto", "corpo"],
+        username=username,
     ) if texto_original else {}
 
     # --- Credenciais do remetente ---

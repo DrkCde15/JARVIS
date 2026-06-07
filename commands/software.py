@@ -1,5 +1,11 @@
-import subprocess
 import os
+import subprocess
+import time
+import webbrowser
+from urllib.parse import quote_plus
+
+import pyautogui
+import pyperclip
 import winapps
 from commands.constants import Colors
 from commands.voice import falar
@@ -112,6 +118,91 @@ def abrir_aplicativo_winapps(match, username=None):
         return f"Tentando abrir {nome_app}, senhor."
     except Exception:
         return f"Não foi possível abrir {nome_app}."
+
+def abrir_url_no_aplicativo(nome_app, url, username=None):
+    try:
+        comando = (
+            f"Start-Process -FilePath {ps_quote(nome_app)} "
+            f"-ArgumentList {ps_quote(url)}"
+        )
+        subprocess.Popen(
+            ["powershell", "-NoProfile", "-Command", comando],
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+        )
+        return f"Abrindo {nome_app} com a pesquisa solicitada."
+    except Exception as e:
+        return f"Nao foi possivel abrir {nome_app} com a URL: {e}"
+
+
+def ps_quote(value):
+    return "'" + str(value).replace("'", "''") + "'"
+
+
+def normalizar_nome_navegador(nome_navegador):
+    if not nome_navegador:
+        return None
+
+    nome = str(nome_navegador).strip().lower()
+    aliases = {
+        "brave": "brave",
+        "chrome": "chrome",
+        "google chrome": "chrome",
+        "edge": "msedge",
+        "microsoft edge": "msedge",
+        "firefox": "firefox",
+        "opera": "opera",
+    }
+    return aliases.get(nome, nome)
+
+
+def montar_url_pesquisa_google(consulta):
+    return f"https://www.google.com/search?q={quote_plus(str(consulta).strip())}"
+
+
+def abrir_navegador_padrao(url):
+    webbrowser.open(url)
+
+
+def abrir_navegador_para_atalho(nome_navegador=None):
+    navegador = normalizar_nome_navegador(nome_navegador)
+    if navegador:
+        subprocess.Popen(
+            ["powershell", "-NoProfile", "-Command", f"Start-Process {ps_quote(navegador)}"],
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+        )
+        return navegador
+
+    abrir_navegador_padrao("about:blank")
+    return "navegador padrao"
+
+
+def pesquisar_no_navegador(consulta, nome_navegador=None, anonimo=False, username=None):
+    consulta = str(consulta or "").strip()
+    if not consulta:
+        return "Informe o que devo pesquisar."
+
+    url = montar_url_pesquisa_google(consulta)
+    navegador = normalizar_nome_navegador(nome_navegador)
+
+    if not anonimo:
+        if navegador:
+            return abrir_url_no_aplicativo(navegador, url, username)
+
+        abrir_navegador_padrao(url)
+        return f"Pesquisando '{consulta}' no navegador padrao."
+
+    alvo = abrir_navegador_para_atalho(navegador)
+    time.sleep(1.5)
+    pyautogui.hotkey("ctrl", "shift", "n")
+    time.sleep(0.8)
+    pyperclip.copy(url)
+    pyautogui.hotkey("ctrl", "v")
+    pyautogui.press("enter")
+
+    return f"Pesquisando '{consulta}' em guia anonima no {alvo}."
+
 
 def desinstalar_app_winapps(nome_app, username=None, modo='texto'):
     """Tenta desinstalar aplicativo - apenas abre o menu do windows pois winapps não remove diretamente"""

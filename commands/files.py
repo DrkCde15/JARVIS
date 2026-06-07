@@ -47,7 +47,7 @@ def abrir_pasta(match, username):
 def criar_arquivo(match, username, status=None):
     documentos = Path.home() / "Documents"
     texto_original = match if isinstance(match, str) else (match.group(0) if hasattr(match, 'group') else "")
-    params = extrair_params_ia(texto_original, ["nome", "conteudo"]) if texto_original else {}
+    params = extrair_params_ia(texto_original, ["nome", "conteudo"], username=username) if texto_original else {}
 
     nome = params.get("nome") or ""
     conteudo = params.get("conteudo") or ""
@@ -72,7 +72,11 @@ def criar_codigo(match, username, session_id=None, status=None):
     documentos.mkdir(exist_ok=True)
 
     texto_original = match if isinstance(match, str) else (match.group(0) if hasattr(match, 'group') else "")
-    params = extrair_params_ia(texto_original, ["linguagem", "descricao", "nome_arquivo"]) if texto_original else {}
+    params = extrair_params_ia(
+        texto_original,
+        ["linguagem", "descricao", "nome_arquivo"],
+        username=username,
+    ) if texto_original else {}
 
     linguagem = (params.get("linguagem") or "").lower()
     descricao = params.get("descricao") or ""

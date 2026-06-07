@@ -57,7 +57,7 @@ def print_help() -> None:
     commands = [
         ("/", "Mostra este menu de ajuda", "Sistema"),
         ("/voice", "Ativa o microfone para comando de voz", "Interação"),
-        ("/agenda", "Exibe a sua agenda atual", "Produtividade"),
+        ("/api", "Configura provedor, chave e modelo de IA", "Configuração"),
         ("/logout", "Encerra a sessão do usuário atual", "Sessão"),
         ("/exit", "Fecha o assistente", "Sistema"),
     ]
