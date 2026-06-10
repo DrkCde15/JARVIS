@@ -1,14 +1,14 @@
 # J.A.R.V.I.S - System Assistant
 
-Assistente pessoal em Python com interface CLI, automacao de tarefas, mensageria, analise de arquivos, voz e integracao com IA via Groq.
+Assistente pessoal em Python com interface CLI, automacao de tarefas, mensageria, analise de arquivos, voz e integracao com IA.
 
 ## Stack atual
 
-- IA: Groq API
+- IA: provedores OpenAI-compativeis
 - Interface: CLI
 - NLP local: spaCy
 - Automacao web
-- Banco de dados: MySQL
+- Banco de dados: SQLite
 - Mensageria
 - Analise de arquivos
 - Analise de conteudo de sites
@@ -38,7 +38,7 @@ Com isso, o comando de analise de imagem retorna mensagem de indisponibilidade n
 
 - Python 3.13+
 - Windows (projeto atual com automacoes voltadas para Windows)
-- MySQL ativo
+- SQLite local via biblioteca padrao do Python
 
 ## Instalacao
 
@@ -71,12 +71,16 @@ API_GROQ=sua_chave_groq
 MODEL_NAME=groq/compound-mini
 GROQ_BASE_URL=https://api.groq.com/openai/v1
 GROQ_TIMEOUT=30
+JARVIS_DB_PATH=jarvis.sqlite3
+```
 
-MYSQL_HOST=localhost
-MYSQL_PORT=3306
-MYSQL_USER=root
-MYSQL_PASSWORD=sua_senha
-MYSQL_DATABASE=jarvis_db
+Se `JARVIS_DB_PATH` nao for definido, o JARVIS cria `jarvis.sqlite3` na raiz do projeto.
+Para copiar dados de uma instalacao MySQL antiga, mantenha as variaveis `MYSQL_*` no `.env`,
+instale `pymysql` somente para a migracao e rode:
+
+```powershell
+python -m pip install pymysql
+python scripts/migrate_mysql_to_sqlite.py
 ```
 
 ## Execucao
@@ -118,7 +122,7 @@ abra guia anonima no brave e pesquise sobre linux
 inicie o brave e pesquise sobre linux
 ```
 
-O agente planeja uma etapa por vez, executa ferramentas permitidas, registra a tarefa no MySQL e pede confirmacao antes de acoes sensiveis. Para comandos PowerShell, ele mostra o comando exato e so executa depois de autorizacao.
+O agente planeja uma etapa por vez, executa ferramentas permitidas, registra a tarefa no SQLite e pede confirmacao antes de acoes sensiveis. Para comandos PowerShell, ele mostra o comando exato e so executa depois de autorizacao.
 
 ## Estrutura resumida
 
