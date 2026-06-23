@@ -4,6 +4,7 @@ from rich.prompt import Prompt
 
 from cli_design import (
     console,
+    get_input,
     print_assistant_response,
     print_banner,
     print_error,
@@ -218,12 +219,11 @@ def processar_e_exibir(comando: str, username: str, token: str, veio_por_voz: bo
 
 def loop_chat(username: str, token: str) -> str:
     console.print(f"[dim]Sessão ativa como: {username}[/dim]")
-    print_help()
+    console.print("[dim]Digite seu comando ou mensagem.[/dim]")
 
     while True:
         try:
-            # Captura o input usando a string customizada do nosso tema
-            comando = console.input(get_prompt_string()).strip()
+            comando = get_input()
         except (KeyboardInterrupt, EOFError):
             console.print("")
             return "sair"

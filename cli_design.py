@@ -6,6 +6,10 @@ from rich.panel import Panel
 from rich.table import Table
 from rich.align import Align
 from rich.text import Text
+from prompt_toolkit import PromptSession
+from prompt_toolkit.completion import Completer, Completion
+from prompt_toolkit.formatted_text import ANSI
+from prompt_toolkit.history import InMemoryHistory
 
 # Configuração de um tema moderno e cyberpunk
 custom_theme = Theme({
@@ -21,6 +25,80 @@ custom_theme = Theme({
 })
 
 console = Console(theme=custom_theme, no_color=os.getenv("NO_COLOR") is not None)
+
+COMMANDS = [
+    ("/", "Mostra este menu de ajuda"),
+    ("/ouvir", "Ativar microfone para comando de voz"),
+    ("/sair", "Fechar o assistente"),
+    ("/ajuda", "Mostrar ajuda"),
+    ("/api", "Configurar provedor, chave e modelo de IA"),
+    ("/agenda", "Mostrar agenda de tarefas"),
+    ("/logout", "Encerrar sessão do usuário atual"),
+    ("/details", "Mostrar detalhes de execução de ferramentas"),
+    ("/ver agenda", "Mostrar agenda de tarefas"),
+    ("/tocar", "Tocar música ou vídeo no YouTube"),
+    ("/abrir", "Abrir site, pasta ou aplicativo"),
+    ("/pesquisar", "Pesquisar no Google"),
+    ("/enviar whatsapp", "Enviar mensagem via WhatsApp"),
+    ("/enviar email", "Enviar e-mail"),
+    ("/analisar arquivo", "Analisar conteúdo de um arquivo"),
+    ("/analisar site", "Extrair e resumir conteúdo de um site"),
+    ("/analisar imagem", "Analisar uma imagem"),
+    ("/listar aplicativos", "Listar apps instalados"),
+    ("/instalar", "Instalar um aplicativo"),
+    ("/desinstalar", "Desinstalar um aplicativo"),
+    ("/gravar tela", "Iniciar gravação de tela"),
+    ("/parar gravacao", "Finaliza gravação"),
+    ("/limpar lixo", "Limpar arquivos temporários"),
+    ("/baixar video", "Baixar vídeo do YouTube"),
+    ("/baixar audio", "Baixar áudio do YouTube"),
+    ("/adicionar tarefa", "Adicionar nova tarefa na agenda"),
+    ("/criar conta", "Criar nova conta de usuário"),
+    ("/configurar ia", "Configurar provedor de IA"),
+]
+
+
+class CommandCompleter(Completer):
+    def get_completions(self, document, complete_event):
+        text = document.text_before_cursor.strip()
+
+        if not text.startswith("/"):
+            return
+
+        lower = text.lower()
+
+        if lower == "/":
+            for cmd, desc in COMMANDS:
+                yield Completion(
+                    cmd,
+                    start_position=-len(document.text_before_cursor),
+                    display=f"{cmd:<20} {desc}",
+                )
+            return
+
+        for cmd, desc in COMMANDS:
+            cmd_lower = cmd.lower()
+            if cmd_lower.startswith(lower) or lower in cmd_lower:
+                yield Completion(
+                    cmd,
+                    start_position=-len(document.text_before_cursor),
+                    display=f"{cmd:<20} {desc}",
+                )
+
+
+_session = PromptSession(
+    completer=CommandCompleter(),
+    history=InMemoryHistory(),
+    complete_while_typing=True,
+)
+
+
+def get_input() -> str:
+    try:
+        return _session.prompt(ANSI("[dim]>>>[/dim] ")).strip()
+    except (KeyboardInterrupt, EOFError):
+        return ""
+
 
 JARVIS_LOGO = r"""
        _     ___   ____   __     __  ___   ____  
