@@ -316,12 +316,3 @@ python -m pytest tests/ -v
 **Julio Cesar**  
 📧 [jcesarsantana215@gmail.com](mailto:jcesarsantana215@gmail.com)  
 🔗 [linkedin.com/in/julio-santana-ads](https://www.linkedin.com/in/julio-santana-ads/)
-
----
-
-## 📝 Notas
-
-- ⚠️ A `SECRET_KEY` padrão no `.env` é fraca (`JARVISTHEFUTURE`). Troque antes de produção.
-- 🐍 PyPDF2 está depreciado; o sistema usa **pymupdf** como parser primário de PDF.
-- 🐳 O sandbox Docker precisa do Docker instalado. Se não estiver disponível, faz fallback para execução local com timeout.
-- 🗄️ ChromaDB persiste em `chroma_db/` (ignorado pelo git).
