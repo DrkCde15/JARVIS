@@ -114,8 +114,6 @@ GROQ_TIMEOUT=30
 JARVIS_DB_PATH=jarvis.sqlite3
 ```
 
-> ⚠️ A SECRET_KEY padrão `JARVISTHEFUTURE` é fraca. Troque antes de usar em produção.
-
 ---
 
 ## 🎮 Como Usar
