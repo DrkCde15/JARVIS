@@ -1,0 +1,18 @@
+{
+  "id": "marketing_release",
+  "name": "Release de Imprensa",
+  "role": "marketing",
+  "description": "Comunicado oficial para imprensa sobre lancamento ou evento",
+  "placeholders": ["empresa", "titulo", "data", "local", "contato"],
+  "content": [
+    {"type": "paragraph", "text": "Para publicacao imediata"},
+    {"type": "heading1", "text": "{{titulo}}"},
+    {"type": "paragraph", "text": "{{empresa}} anuncia novidades em {{data}}"},
+    {"type": "paragraph", "text": "LOCAL: {{local}}"},
+    {"type": "page_break"},
+    {"type": "heading2", "text": "Sobre a {{empresa}}"},
+    {"type": "paragraph", "text": "Insira aqui o texto institucional da empresa."},
+    {"type": "heading2", "text": "Contato"},
+    {"type": "paragraph", "text": "{{contato}}"}
+  ]
+}

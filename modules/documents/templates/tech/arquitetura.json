@@ -1,0 +1,17 @@
+{
+  "id": "tech_arquitetura",
+  "name": "Documento de Arquitetura de Software",
+  "role": "tech",
+  "description": "Documentacao de arquitetura tecnica do projeto",
+  "placeholders": ["projeto", "versao", "linguagem", "framework", "banco", "autor"],
+  "content": [
+    {"type": "heading1", "text": "Arquitetura - {{projeto}}"},
+    {"type": "paragraph", "text": "Versao: {{versao}}"},
+    {"type": "heading2", "text": "Stack Tecnologica"},
+    {"type": "table", "data": [["Componente", "Tecnologia"], ["Linguagem", "{{linguagem}}"], ["Framework", "{{framework}}"], ["Banco de Dados", "{{banco}}"]]},
+    {"type": "heading2", "text": "Visao Geral"},
+    {"type": "paragraph", "text": "Descreva aqui a arquitetura do sistema, principais modulos e fluxos de dados."},
+    {"type": "heading2", "text": "Autor"},
+    {"type": "paragraph", "text": "{{autor}}"}
+  ]
+}

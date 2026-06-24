@@ -1,0 +1,17 @@
+{
+  "id": "rh_oferta",
+  "name": "Carta de Oferta de Emprego",
+  "role": "rh",
+  "description": "Carta formal de proposta de emprego para candidato",
+  "placeholders": ["candidato", "cargo", "empresa", "salario", "data_inicio", "gestor"],
+  "content": [
+    {"type": "heading1", "text": "Carta de Oferta de Emprego"},
+    {"type": "paragraph", "text": "Prezado(a) {{candidato}},"},
+    {"type": "paragraph", "text": "Temos o prazer de oferecer a voce o cargo de {{cargo}} na {{empresa}}."},
+    {"type": "heading2", "text": "Detalhes da Oferta"},
+    {"type": "table", "data": [["Item", "Detalhe"], ["Cargo", "{{cargo}}"], ["Salario", "{{salario}}"], ["Data de Inicio", "{{data_inicio}}"], ["Gestor Imediato", "{{gestor}}"]]},
+    {"type": "paragraph", "text": "Aguardamos seu retorno para dar continuidade ao processo."},
+    {"type": "paragraph", "text": "Atenciosamente,", "style": ""},
+    {"type": "paragraph", "text": "Equipe {{empresa}}"}
+  ]
+}

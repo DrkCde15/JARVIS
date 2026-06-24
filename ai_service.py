@@ -41,7 +41,42 @@ PROVIDER_DEFAULTS = {
 }
 
 
-def obter_prompt_sistema():
+AREA_POR_ROLE = {
+    "admin": "Administração",
+    "tech": "Tecnologia",
+    "security": "Segurança",
+    "marketing": "Marketing",
+    "finance": "Financeiro",
+    "legal": "Jurídico",
+    "rh": "Recursos Humanos",
+    "user": "Geral",
+}
+
+
+def _contexto_usuario(username: str | None) -> str:
+    if not username:
+        return ""
+
+    from modules.permissions.rbac import get_user_roles
+
+    roles = get_user_roles(username)
+    if not roles:
+        return ""
+
+    nomes = [r["name"] for r in roles]
+    areas = list({AREA_POR_ROLE.get(r["name"], r["name"]) for r in roles})
+    area_principal = areas[0] if len(areas) == 1 else " / ".join(areas)
+
+    return (
+        f"\nContexto do usuario:\n"
+        f"- Nome: {username}\n"
+        f"- Area: {area_principal}\n"
+        f"- Papeis: {', '.join(nomes)}\n"
+    )
+
+
+def obter_prompt_sistema(username: str | None = None):
+    contexto = _contexto_usuario(username)
     return (
         "Voce e o JARVIS, um assistente tecnico em portugues do Brasil.\n"
         "Seja pratico, claro e objetivo.\n"
@@ -49,6 +84,7 @@ def obter_prompt_sistema():
         "e solicite confirmacao antes de qualquer acao sensivel, destrutiva ou com impacto externo.\n"
         "Nao invente resultados de ferramentas: use as observacoes recebidas.\n"
         "Para pedidos de programacao, inclua exemplos de codigo quando ajudar.\n"
+        f"{contexto}"
     )
 
 
@@ -187,7 +223,8 @@ def gerar_resposta_ia(input_usuario: str, session_id: str | None = None, usernam
         return "Pronto."
 
     try:
-        resposta = provider.get_response(input_usuario)
+        system_prompt = obter_prompt_sistema(username)
+        resposta = provider.get_response(input_usuario, system_prompt=system_prompt)
         if not resposta:
             return "Nao consegui gerar resposta agora."
 

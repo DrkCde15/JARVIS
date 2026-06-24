@@ -1,0 +1,22 @@
+{
+  "id": "legal_contrato",
+  "name": "Contrato de Prestacao de Servicos",
+  "role": "legal",
+  "description": "Contrato formal entre contratante e contratado",
+  "placeholders": ["contratante", "contratado", "objeto", "vigencia", "valor"],
+  "content": [
+    {"type": "heading1", "text": "Contrato de Prestacao de Servicos"},
+    {"type": "paragraph", "text": "Contratante: {{contratante}}"},
+    {"type": "paragraph", "text": "Contratado: {{contratado}}"},
+    {"type": "heading2", "text": "Clausula 1 - Objeto"},
+    {"type": "paragraph", "text": "{{objeto}}"},
+    {"type": "heading2", "text": "Clausula 2 - Vigencia"},
+    {"type": "paragraph", "text": "{{vigencia}}"},
+    {"type": "heading2", "text": "Clausula 3 - Valor"},
+    {"type": "paragraph", "text": "{{valor}}"},
+    {"type": "page_break"},
+    {"type": "paragraph", "text": "Local e data: ___________________________"},
+    {"type": "paragraph", "text": "Assinatura do Contratante: ___________________________"},
+    {"type": "paragraph", "text": "Assinatura do Contratado: ___________________________"}
+  ]
+}

@@ -1,0 +1,14 @@
+{
+  "id": "finance_despesas",
+  "name": "Relatorio de Despesas",
+  "role": "finance",
+  "description": "Relatorio mensal de despesas departamentais",
+  "placeholders": ["departamento", "mes", "ano", "total", "centro_custo"],
+  "content": [
+    {"type": "heading1", "text": "Relatorio de Despesas - {{departamento}}"},
+    {"type": "paragraph", "text": "Periodo: {{mes}}/{{ano}}"},
+    {"type": "table", "data": [["Categoria", "Valor"], ["Total", "{{total}}"]]},
+    {"type": "paragraph", "text": "Centro de Custo: {{centro_custo}}"},
+    {"type": "paragraph", "text": "Observacoes e detalhes adicionais podem ser incluidos abaixo."}
+  ]
+}

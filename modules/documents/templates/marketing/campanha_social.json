@@ -1,0 +1,20 @@
+{
+  "id": "marketing_campanha",
+  "name": "Proposta de Campanha de Midias Sociais",
+  "role": "marketing",
+  "description": "Estrutura completa de campanha para redes sociais",
+  "placeholders": ["cliente", "produto", "publico_alvo", "orcamento", "cronograma"],
+  "content": [
+    {"type": "heading1", "text": "Proposta de Campanha - {{produto}}"},
+    {"type": "heading2", "text": "Cliente"},
+    {"type": "paragraph", "text": "{{cliente}}"},
+    {"type": "heading2", "text": "Publico Alvo"},
+    {"type": "paragraph", "text": "{{publico_alvo}}"},
+    {"type": "heading2", "text": "Estrategia"},
+    {"type": "paragraph", "text": "Descreva aqui a estrategia da campanha."},
+    {"type": "heading2", "text": "Cronograma"},
+    {"type": "paragraph", "text": "{{cronograma}}"},
+    {"type": "heading2", "text": "Orcamento"},
+    {"type": "paragraph", "text": "{{orcamento}}"}
+  ]
+}

@@ -151,6 +151,71 @@ def execute_analyze_file(args, context):
     )
 
 
+def execute_analyse_code(args, context):
+    from commands.files import CODE_EXTENSIONS, LINGUAGENS_POR_EXTENSAO, ler_codigo, buscar_arquivo_por_nome, _analisar_com_powershell
+
+    file = require_value(args, "file")
+    run_tools = parse_bool(args.get("run_tools", True))
+
+    match = ToolInput(file)
+    arquivo = buscar_arquivo_por_nome(file)
+    if not arquivo:
+        return f"Arquivo '{file}' nao encontrado na pasta Documentos."
+
+    sufixo = arquivo.suffix.lower()
+    if sufixo not in CODE_EXTENSIONS:
+        return f"'{sufixo}' nao e um formato de codigo reconhecido. Use analyze_file para documentos."
+
+    conteudo = ler_codigo(arquivo)
+    if not conteudo or not conteudo.strip():
+        return "Arquivo vazio ou ilegivel."
+
+    linguagem = LINGUAGENS_POR_EXTENSAO.get(sufixo, "codigo")
+    linhas = conteudo.count("\n") + 1
+
+    extras = ""
+    if run_tools:
+        resultados = _analisar_com_powershell(arquivo, context.session_id, context.username)
+        if resultados:
+            extras = "\n\n--- Resultados de ferramentas ---\n" + "\n\n".join(resultados)
+
+    prompt = (
+        f"Analise este codigo {linguagem} em detalhes:\n"
+        f"Caminho: {arquivo}\n"
+        f"Linhas: {linhas}\n\n"
+        f"```{linguagem.lower()}\n{conteudo[:10000]}\n```"
+        f"{extras}\n\n"
+        "Forneca:\n"
+        "1. Proposito do codigo\n"
+        "2. Problemas ou bugs encontrados\n"
+        "3. Sugestoes de melhoria\n"
+        "4. Boas praticas\n"
+        "5. Complexidade ciclomatica aparente"
+    )
+    if len(conteudo) > 10000:
+        prompt += (
+            f"\n\n[O arquivo tem {linhas} linhas. Mostrei as primeiras ~10000 chars. "
+            "Peça que eu leia partes especificas se precisar de mais.]"
+        )
+
+    analysis = gerar_resposta_ia(prompt, context.session_id, context.username or "Usuario")
+
+    try:
+        from modules.code_analysis import salvar_analise
+        salvar_analise(
+            username=context.username or "desconhecido",
+            filename=arquivo.name,
+            file_path=str(arquivo),
+            language=linguagem,
+            lines=linhas,
+            analysis=analysis,
+        )
+    except Exception:
+        pass
+
+    return analysis
+
+
 def execute_analyze_site(args, context):
     return analisar_site(
         require_value(args, "url"),
@@ -177,6 +242,90 @@ def execute_check_date(args, context):
 
 def execute_check_ip(args, context):
     return obter_ip(None, context.username)
+
+
+def execute_analysis_history(args, context):
+    from modules.code_analysis import listar_analises, obter_analise
+
+    analysis_id = str(args.get("id") or "").strip()
+    if analysis_id:
+        item = obter_analise(analysis_id)
+        if not item:
+            return f"Analise '{analysis_id}' nao encontrada."
+        analysis = item["analysis"]
+        return f"Analise de {item['filename']} ({item['language']}, {item['lines']} linhas):\n\n{analysis[:3000]}"
+
+    analises = listar_analises(username=context.username, limit=10)
+    if not analises:
+        return "Nenhuma analise de codigo encontrada no historico."
+    lines = [
+        f"  {a['id'][:8]} | {a['filename']:20s} | {a['language']:12s} | {a['lines']:3d} linhas | {a['created_at']}"
+        for a in analises
+    ]
+    return "Historico de analises:\n" + "\n".join(lines)
+
+
+def execute_run_code(args, context):
+    from modules.sandbox import executar_codigo, docker_disponivel
+
+    linguagem = require_value(args, "language")
+    codigo = require_value(args, "code")
+
+    result = executar_codigo(linguagem, codigo)
+    output = result["output"]
+    if result.get("mode") == "local" and not result.get("success"):
+        modo = "execucao local (sem Docker)"
+    elif result.get("mode") == "docker":
+        modo = "Docker (sandbox)"
+    else:
+        modo = "execucao local"
+
+    return (
+        f"Execucao ({modo}):\n"
+        f"Status: {'OK' if result['success'] else 'FALHA'}\n"
+        f"Duracao: {result['duration']}s\n"
+        f"--- Saida ---\n{output[:5000]}"
+    )
+
+
+def execute_generate_from_template(args, context):
+    from modules.documents.template_engine import listar_templates, gerar_documento_de_template
+
+    template_id = require_value(args, "template_id")
+    valores = args.get("valores")
+    if isinstance(valores, str):
+        import json
+        valores = json.loads(valores)
+    if not isinstance(valores, dict):
+        return "Parametro 'valores' deve ser um dicionario com os placeholders."
+
+    formato = str(args.get("format", "docx")).strip()
+    if formato not in ("docx", "pdf", "pptx"):
+        return "Formato deve ser docx, pdf ou pptx."
+
+    try:
+        path = gerar_documento_de_template(
+            template_id=template_id,
+            valores=valores,
+            username=context.username,
+            formato=formato,
+            filename=args.get("filename"),
+        )
+        return f"Documento gerado: {path}"
+    except ValueError as e:
+        return f"Erro: {e}"
+    except Exception as e:
+        return f"Erro ao gerar documento: {e}"
+
+
+def execute_list_templates(args, context):
+    from modules.documents.template_engine import listar_templates
+
+    templates = listar_templates(context.username)
+    if not templates:
+        return "Nenhum template disponivel para seu perfil."
+    lines = [f"  {t['id']}: {t['name']} - {t['description']}" for t in templates]
+    return "Templates disponiveis:\n" + "\n".join(lines)
 
 
 def execute_clean_trash(args, context):
@@ -208,6 +357,154 @@ def execute_powershell(args, context):
         output = output[:MAX_POWERSHELL_OUTPUT_CHARS] + "\n...saida truncada..."
 
     return f"Exit code: {result.returncode}\n{output}"
+
+
+def _checar_permissao_integracao(username: str, service: str) -> str | None:
+    from modules.permissions.rbac import user_has_permission
+
+    if not username:
+        return "Usuário nao autenticado."
+    if not user_has_permission(username, "integrations", service):
+        return f"Integracao {service} restrita ao perfil Tech. Seu usuario nao tem permissao."
+    return None
+
+
+def _get_integration_token(username: str, service: str):
+    from database.sqlite.connection import get_connection, release_connection
+    from memory import revelar_senha_smtp
+
+    conn = get_connection()
+    try:
+        row = conn.execute(
+            "SELECT token_secret, url FROM integrations WHERE username=? AND service=? AND is_active=1",
+            (username, service),
+        ).fetchone()
+        if not row:
+            return None, None
+        token = revelar_senha_smtp(row["token_secret"])
+        return token, row["url"]
+    finally:
+        release_connection(conn)
+
+
+def execute_github_list_repos(args, context):
+    blocked = _checar_permissao_integracao(context.username, "github")
+    if blocked:
+        return blocked
+    token, _ = _get_integration_token(context.username, "github")
+    if not token:
+        return "GitHub nao configurado. Configure o token no login com /api ou via API."
+
+    from integrations.github.client import GitHubClient
+
+    client = GitHubClient(token=token)
+    repos = client.list_repos()
+    lines = [f"{r['full_name']} ({r['language'] or '?'}) - {r['url']}" for r in repos[:15]]
+    return "Repositorios GitHub:\n" + "\n".join(lines) if lines else "Nenhum repositorio encontrado."
+
+
+def execute_github_list_commits(args, context):
+    blocked = _checar_permissao_integracao(context.username, "github")
+    if blocked:
+        return blocked
+    repo = require_value(args, "repo")
+    branch = args.get("branch", "main")
+    token, _ = _get_integration_token(context.username, "github")
+    if not token:
+        return "GitHub nao configurado."
+
+    from integrations.github.client import GitHubClient
+
+    client = GitHubClient(token=token)
+    commits = client.list_commits(repo, branch=branch)
+    lines = [f"{c['sha']} - {c['message'][:60]} ({c['author']})" for c in commits[:10]]
+    return f"Commits de {repo} ({branch}):\n" + "\n".join(lines) if lines else "Nenhum commit encontrado."
+
+
+def execute_github_list_pulls(args, context):
+    blocked = _checar_permissao_integracao(context.username, "github")
+    if blocked:
+        return blocked
+    repo = require_value(args, "repo")
+    state = args.get("state", "open")
+    token, _ = _get_integration_token(context.username, "github")
+    if not token:
+        return "GitHub nao configurado."
+
+    from integrations.github.client import GitHubClient
+
+    client = GitHubClient(token=token)
+    prs = client.list_pull_requests(repo, state=state)
+    lines = [f"#{pr['number']} - {pr['title']} ({pr['author']})" for pr in prs[:10]]
+    return f"Pull Requests de {repo} ({state}):\n" + "\n".join(lines) if lines else "Nenhum PR encontrado."
+
+
+def execute_github_get_diff(args, context):
+    blocked = _checar_permissao_integracao(context.username, "github")
+    if blocked:
+        return blocked
+    repo = require_value(args, "repo")
+    pr_number = int(require_value(args, "pr_number"))
+    token, _ = _get_integration_token(context.username, "github")
+    if not token:
+        return "GitHub nao configurado."
+
+    from integrations.github.client import GitHubClient
+
+    client = GitHubClient(token=token)
+    return client.get_diff_summary(repo, pr_number)
+
+
+def execute_gitlab_list_projects(args, context):
+    blocked = _checar_permissao_integracao(context.username, "gitlab")
+    if blocked:
+        return blocked
+    token, url = _get_integration_token(context.username, "gitlab")
+    if not token:
+        return "GitLab nao configurado."
+
+    from integrations.gitlab.client import GitLabClient
+
+    client = GitLabClient(token=token, url=url or "https://gitlab.com")
+    projects = client.list_projects()
+    lines = [f"{p['path_with_namespace']} - {p['url']}" for p in projects[:15]]
+    return "Projetos GitLab:\n" + "\n".join(lines) if lines else "Nenhum projeto encontrado."
+
+
+def execute_gitlab_list_commits(args, context):
+    blocked = _checar_permissao_integracao(context.username, "gitlab")
+    if blocked:
+        return blocked
+    project_id = int(require_value(args, "project_id"))
+    branch = args.get("branch", "main")
+    token, url = _get_integration_token(context.username, "gitlab")
+    if not token:
+        return "GitLab nao configurado."
+
+    from integrations.gitlab.client import GitLabClient
+
+    client = GitLabClient(token=token, url=url or "https://gitlab.com")
+    commits = client.list_commits(project_id, branch=branch)
+    lines = [f"{c['sha']} - {c['message'][:60]} ({c['author']})" for c in commits[:10]]
+    return f"Commits do projeto {project_id} ({branch}):\n" + "\n".join(lines) if lines else "Nenhum commit encontrado."
+
+
+def execute_gitlab_list_merges(args, context):
+    blocked = _checar_permissao_integracao(context.username, "gitlab")
+    if blocked:
+        return blocked
+    project_id = int(require_value(args, "project_id"))
+    state = args.get("state", "opened")
+    token, url = _get_integration_token(context.username, "gitlab")
+    if not token:
+        return "GitLab nao configurado."
+
+    from integrations.gitlab.client import GitLabClient
+
+    client = GitLabClient(token=token, url=url or "https://gitlab.com")
+    mrs = client.list_merge_requests(project_id, state=state)
+    lines = [f"!{mr['iid']} - {mr['title']} ({mr['author']})" for mr in mrs[:10]]
+    return f"Merge Requests do projeto {project_id} ({state}):\n" + "\n".join(lines) if lines else "Nenhum MR encontrado."
 
 
 TOOLS = {
@@ -265,9 +562,22 @@ TOOLS = {
     ),
     "analyze_file": ToolDefinition(
         "analyze_file",
-        "Analisa um arquivo da pasta Documentos.",
+        "Analisa um arquivo da pasta Documentos (codigo, texto, PDF, DOCX, etc).",
         {"file": "Nome do arquivo."},
         execute_analyze_file,
+        requires_confirmation=True,
+    ),
+    "analyse_code": ToolDefinition(
+        "analyse_code",
+        "Analise detalhada de codigo-fonte com linters e ferramentas (ruff, mypy, pytest, eslint). "
+        "Use esta ferramenta quando o usuario pedir revisao de codigo, code review, "
+        "analise tecnica, encontrar bugs, ou sugestoes de melhoria em codigo.",
+        {
+            "file": "Nome do arquivo de codigo (ex: main.py, App.tsx).",
+            "run_tools": "Se deve executar linters e testes (true/false, padrao: true).",
+        },
+        execute_analyse_code,
+        requires_confirmation=True,
     ),
     "analyze_site": ToolDefinition(
         "analyze_site",
@@ -311,6 +621,46 @@ TOOLS = {
         {},
         execute_list_apps,
     ),
+    "run_code": ToolDefinition(
+        "run_code",
+        "Executa codigo em ambiente isolado (Docker se disponivel, senao local). "
+        "Use quando o usuario pedir para executar/testar/rodar codigo.",
+        {
+            "language": "Linguagem: python, javascript, typescript, go, rust, ruby, php.",
+            "code": "Codigo fonte completo a ser executado.",
+        },
+        execute_run_code,
+        requires_confirmation=True,
+    ),
+    "analysis_history": ToolDefinition(
+        "analysis_history",
+        "Mostra o historico de analises de codigo realizadas. "
+        "Use 'id' para ver uma analise especifica.",
+        {
+            "id": "ID opcional da analise para ver detalhes (16 primeiros caracteres).",
+        },
+        execute_analysis_history,
+    ),
+    "list_templates": ToolDefinition(
+        "list_templates",
+        "Lista templates de documentos disponiveis para o perfil do usuario "
+        "(marketing, rh, finance, legal, tech).",
+        {},
+        execute_list_templates,
+    ),
+    "generate_from_template": ToolDefinition(
+        "generate_from_template",
+        "Gera um documento a partir de um template pre-definido para o perfil do usuario. "
+        "Use list_templates primeiro para ver os templates disponiveis.",
+        {
+            "template_id": "ID do template (ex: marketing_release, rh_oferta).",
+            "valores": "Dicionario com valores para os placeholders do template.",
+            "format": "Formato do documento: docx, pdf, pptx (padrao: docx).",
+            "filename": "Nome opcional do arquivo de saida.",
+        },
+        execute_generate_from_template,
+        requires_confirmation=True,
+    ),
     "clean_trash": ToolDefinition(
         "clean_trash",
         "Limpa arquivos temporarios do sistema.",
@@ -327,6 +677,63 @@ TOOLS = {
         },
         execute_powershell,
         requires_confirmation=True,
+    ),
+    "github_list_repos": ToolDefinition(
+        "github_list_repos",
+        "Lista repositorios do GitHub do usuario autenticado.",
+        {},
+        execute_github_list_repos,
+    ),
+    "github_list_commits": ToolDefinition(
+        "github_list_commits",
+        "Lista commits recentes de um repositorio GitHub.",
+        {
+            "repo": "Nome completo do repositorio (ex: owner/repo).",
+            "branch": "Branch opcional (padrao: main).",
+        },
+        execute_github_list_commits,
+    ),
+    "github_list_pulls": ToolDefinition(
+        "github_list_pulls",
+        "Lista Pull Requests de um repositorio GitHub.",
+        {
+            "repo": "Nome completo do repositorio (ex: owner/repo).",
+            "state": "Estado dos PRs: open, closed, all (padrao: open).",
+        },
+        execute_github_list_pulls,
+    ),
+    "github_get_diff": ToolDefinition(
+        "github_get_diff",
+        "Mostra resumo das alteracoes de um Pull Request no GitHub.",
+        {
+            "repo": "Nome completo do repositorio (ex: owner/repo).",
+            "pr_number": "Numero do Pull Request.",
+        },
+        execute_github_get_diff,
+    ),
+    "gitlab_list_projects": ToolDefinition(
+        "gitlab_list_projects",
+        "Lista projetos do GitLab do usuario autenticado.",
+        {},
+        execute_gitlab_list_projects,
+    ),
+    "gitlab_list_commits": ToolDefinition(
+        "gitlab_list_commits",
+        "Lista commits recentes de um projeto GitLab.",
+        {
+            "project_id": "ID numerico do projeto GitLab.",
+            "branch": "Branch opcional (padrao: main).",
+        },
+        execute_gitlab_list_commits,
+    ),
+    "gitlab_list_merges": ToolDefinition(
+        "gitlab_list_merges",
+        "Lista Merge Requests de um projeto GitLab.",
+        {
+            "project_id": "ID numerico do projeto GitLab.",
+            "state": "Estado: opened, closed, merged, all (padrao: opened).",
+        },
+        execute_gitlab_list_merges,
     ),
 }
 

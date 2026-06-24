@@ -1,6 +1,5 @@
+# Core
 playwright
-beautifulsoup4
-yt-dlp
 requests
 pyautogui
 pyperclip
@@ -13,18 +12,43 @@ pyaudio
 pandas
 rich
 openpyxl
-python-docx
-python-pptx
-PyPDF2
-pillow
-pymupdf
 python-dotenv
 pyfiglet
+prompt_toolkit
+yt-dlp
+
+# Documents
+python-docx
+python-pptx
+pymupdf
+pillow
+reportlab
+
+# Security & Auth
 python-jose[cryptography]
 cryptography
 bcrypt
-python-multipart
-customtkinter
-prompt_toolkit
+
+# AI & NLP
 spacy
+
+# API
+fastapi
+uvicorn
+pydantic
+python-multipart
+
+# RAG
+chromadb
+
+# Integrations
+PyGithub
+python-gitlab
+
+# Testing
+pytest
+pytest-cov
+httpx
+
+# spaCy model (install after spacy)
 pt-core-news-sm @ https://github.com/explosion/spacy-models/releases/download/pt_core_news_sm-3.8.0/pt_core_news_sm-3.8.0-py3-none-any.whl

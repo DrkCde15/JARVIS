@@ -1,0 +1,61 @@
+[build-system]
+requires = ["setuptools>=68.0"]
+build-backend = "setuptools.backends._legacy:_Backend"
+
+[project]
+name = "jarvis"
+version = "3.0.0"
+description = "J.A.R.V.I.S - Enterprise AI Assistant"
+readme = "README.md"
+requires-python = ">=3.10"
+license = {text = "MIT"}
+authors = [
+    {name = "JARVIS Team"},
+]
+
+dependencies = [
+    "playwright",
+    "requests",
+    "pyautogui",
+    "pyperclip",
+    "plyer",
+    "winapps",
+    "pywhatkit",
+    "SpeechRecognition",
+    "pyttsx3",
+    "pyaudio",
+    "pandas",
+    "rich",
+    "openpyxl",
+    "python-docx",
+    "python-pptx",
+    "pillow",
+    "pymupdf",
+    "python-dotenv",
+    "pyfiglet",
+    "python-jose[cryptography]",
+    "cryptography",
+    "bcrypt",
+    "prompt_toolkit",
+    "spacy",
+    "fastapi",
+    "uvicorn",
+    "pydantic",
+    "python-multipart",
+    "chromadb",
+    "reportlab",
+    "PyGithub",
+    "python-gitlab",
+    "pytest",
+    "pytest-cov",
+    "httpx",
+]
+
+[project.scripts]
+jarvis = "main:main"
+jarvis-api = "api.server:start_server"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = ["test_*.py"]
+python_functions = ["test_*"]

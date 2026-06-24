@@ -146,6 +146,101 @@ def listar_arquivos(match, username):
 
 # ========== Leitura de arquivos ==========
 
+CODE_EXTENSIONS = {
+    ".py", ".js", ".ts", ".tsx", ".jsx", ".mjs", ".cjs",
+    ".java", ".c", ".cpp", ".cc", ".cxx", ".h", ".hpp", ".hxx",
+    ".go", ".rs", ".rb", ".php", ".swift", ".kt", ".kts", ".scala",
+    ".cs", ".fs", ".vb", ".r", ".m", ".mm",
+    ".yaml", ".yml", ".toml", ".ini", ".cfg", ".conf",
+    ".html", ".css", ".scss", ".less", ".sass",
+    ".sql", ".sh", ".ps1", ".bat", ".cmd",
+    ".xml", ".svg", ".json", ".md",
+    ".dockerfile", ".tf", ".gradle", ".cmake",
+}
+
+LINGUAGENS_POR_EXTENSAO = {
+    ".py": "Python", ".js": "JavaScript", ".ts": "TypeScript",
+    ".tsx": "TypeScript React", ".jsx": "JavaScript React",
+    ".java": "Java", ".c": "C", ".cpp": "C++", ".h": "C/C++ Header",
+    ".go": "Go", ".rs": "Rust", ".rb": "Ruby", ".php": "PHP",
+    ".swift": "Swift", ".kt": "Kotlin", ".cs": "C#",
+    ".yaml": "YAML", ".yml": "YAML", ".toml": "TOML",
+    ".html": "HTML", ".css": "CSS", ".scss": "SCSS",
+    ".sql": "SQL", ".sh": "Shell Script", ".ps1": "PowerShell",
+    ".json": "JSON", ".md": "Markdown", ".xml": "XML",
+    ".dockerfile": "Dockerfile", ".tf": "Terraform",
+}
+
+
+def _confirmar_analise(match, username):
+    nome = match.group(1).strip() if hasattr(match, 'group') else match
+    resposta = jarvis_ask(
+        f"Deseja que eu analise '{nome}'? "
+        "Posso ler o arquivo e, se for código, executar ferramentas como linters e testes. "
+        "Digite SIM para autorizar.",
+    )
+    return resposta.strip().lower() in {"sim", "s", "yes", "y"}
+
+
+def _analisar_com_powershell(arquivo: Path, session_id: str, username: str):
+    """Executa ferramentas de análise (lint, typecheck, teste) via PowerShell."""
+    sufixo = arquivo.suffix.lower()
+    resultados = []
+
+    if sufixo == ".py":
+        resposta = jarvis_ask(
+            "Deseja rodar linters e testes neste arquivo Python? "
+            "Posso executar ruff, mypy e pytest. Digite SIM para autorizar ou NAO para pular.",
+        )
+        if resposta.strip().lower() in {"sim", "s", "yes", "y"}:
+            for cmd, label in [
+                (f'python -m ruff check "{arquivo}" 2>&1', "ruff (lint)"),
+                (f'python -m mypy "{arquivo}" 2>&1', "mypy (tipos)"),
+                (f'python -m pytest "{arquivo}" -v --tb=short 2>&1', "pytest (testes)"),
+            ]:
+                try:
+                    r = subprocess.run(
+                        ["powershell", "-NoProfile", "-Command", cmd],
+                        capture_output=True, text=True, timeout=30, check=False,
+                    )
+                    saida = (r.stdout.strip() + "\n" + r.stderr.strip()).strip()
+                    if saida:
+                        resultados.append(f"--- {label} ---\n{saida[:1500]}")
+                except subprocess.TimeoutExpired:
+                    resultados.append(f"--- {label} ---\n(tempo excedido)")
+                except Exception as e:
+                    resultados.append(f"--- {label} ---\n(erro: {e})")
+    elif sufixo in (".js", ".ts", ".tsx", ".jsx"):
+        resposta = jarvis_ask(
+            "Deseja rodar ESLint neste arquivo? Digite SIM para autorizar ou NAO para pular.",
+        )
+        if resposta.strip().lower() in {"sim", "s", "yes", "y"}:
+            try:
+                result = subprocess.run(
+                    ["powershell", "-NoProfile", "-Command",
+                     f'npx eslint "{arquivo}" 2>&1'],
+                    capture_output=True, text=True, timeout=30, check=False,
+                )
+                saida = (result.stdout.strip() + "\n" + result.stderr.strip()).strip()
+                if saida:
+                    resultados.append(f"--- ESLint ---\n{saida[:1500]}")
+            except Exception:
+                pass
+
+    return resultados
+
+
+def ler_codigo(caminho: Path) -> str | None:
+    try:
+        with open(caminho, "r", encoding="utf-8") as f:
+            return f.read()
+    except Exception:
+        try:
+            with open(caminho, "r", encoding="latin-1") as f:
+                return f.read()
+        except Exception:
+            return None
+
 def buscar_arquivo_por_nome(nome_arquivo, pasta_base=None):
     if pasta_base is None:
         pasta_base = Path.home() / "Documents"
@@ -198,15 +293,19 @@ def ler_pptx(caminho):
         return texto
     except Exception as e: return f"Erro: {e}"
 
-def analisar_arquivos(match, username, session_id=None):
+def analisar_arquivos(match, username, session_id=None, permitir_powershell=True):
     try:
         nome_arquivo = match.group(1).strip() if hasattr(match, 'group') else match
         arquivo_encontrado = buscar_arquivo_por_nome(nome_arquivo)
         if not arquivo_encontrado:
             return f"Não encontrei o arquivo '{nome_arquivo}' na pasta Documentos, senhor."
-        
+
+        if not _confirmar_analise(match, username):
+            return "Análise cancelada."
+
         sufixo = arquivo_encontrado.suffix.lower()
         conteudo = None
+        tipo = "documento"
 
         if sufixo == ".txt": conteudo = ler_txt(arquivo_encontrado)
         elif sufixo == ".docx": conteudo = ler_docx(arquivo_encontrado)
@@ -215,12 +314,38 @@ def analisar_arquivos(match, username, session_id=None):
         elif sufixo == ".pdf": conteudo = ler_pdf(arquivo_encontrado)
         elif sufixo in [".xlsx", ".xls"]: conteudo = ler_excel(arquivo_encontrado)
         elif sufixo == ".pptx": conteudo = ler_pptx(arquivo_encontrado)
-        else: return f"Formato '{sufixo}' não suportado."
+        elif sufixo in CODE_EXTENSIONS:
+            conteudo = ler_codigo(arquivo_encontrado)
+            tipo = LINGUAGENS_POR_EXTENSAO.get(sufixo, "código")
+        else:
+            return f"Formato '{sufixo}' não suportado."
 
         if not conteudo or not conteudo.strip() or "Erro:" in str(conteudo):
             return "O arquivo está vazio ou ilegível, senhor."
 
-        prompt = f"Analise esse conteúdo extraído do arquivo:\n\n{conteudo}"
+        # Análise PowerShell para código
+        resultados_ps = []
+        if tipo != "documento" and permitir_powershell:
+            resultados_ps = _analisar_com_powershell(arquivo_encontrado, session_id, username)
+
+        extras = ""
+        if resultados_ps:
+            extras = "\n\n--- Resultados de ferramentas ---\n" + "\n\n".join(resultados_ps)
+
+        linhas = conteudo.count("\n") + 1
+        prompt = (
+            f"Analise este arquivo de {tipo}:\n"
+            f"Caminho: {arquivo_encontrado}\n"
+            f"Linhas: {linhas}\n\n"
+            f"```\n{conteudo[:8000]}\n```"
+            f"{extras}"
+        )
+        if len(conteudo) > 8000:
+            prompt += (
+                f"\n\n[O arquivo tem {linhas} linhas. Mostrei as primeiras ~8000 chars. "
+                f"Se precisar de mais contexto, peça que leio partes específicas.]"
+            )
+
         return gerar_resposta_ia(prompt, session_id, username or "Senhor")
     except Exception as e:
         return f"Erro ao analisar arquivo: {e}"

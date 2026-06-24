@@ -190,6 +190,7 @@ padroes = [
 
     # Análises 
     (re.compile(r'\/?(?:jarvis\s+)?(?:por\s+favor\s+)?analise\s+(?:o\s+)?arquivo\s+(.+)', re.IGNORECASE), analisar_arquivo_comando),
+    (re.compile(r'\/?(?:jarvis\s+)?(?:analise|revise|review)\s+(?:o\s+|esse|este|meu)?\s*codigo\s+(.+)', re.IGNORECASE), executar_agente_comando),
     (re.compile(r'\/?(?:jarvis\s+)?(?:analise|resuma|veja)\s+(?:o\s+)?site\s+(.+)', re.IGNORECASE), analisar_site_comando),
     (re.compile(r'\/?(?:jarvis\s+)?(?:pode\s+)?(?:analisar?|veja|olh?e|dê\s+uma\s+olhada\s+n?a)\s+(?:essa\s+|n?a\s+)?imagem\s+(.+)', re.IGNORECASE), analisar_imagem_regex),
 

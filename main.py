@@ -70,6 +70,87 @@ def exibir_status_servicos() -> None:
         provedor = status.get("provedor", "IA")
         console.print(f"[dim]IA ativa: {provedor} ({modelo})[/dim]\n")
 
+def _integration_ja_configurada(username: str, service: str) -> bool:
+    from database.sqlite.connection import get_connection, release_connection
+
+    conn = get_connection()
+    try:
+        row = conn.execute(
+            "SELECT 1 FROM integrations WHERE username=? AND service=? AND is_active=1",
+            (username, service),
+        ).fetchone()
+        return row is not None
+    finally:
+        release_connection(conn)
+
+
+def _salvar_token_integracao(username: str, service: str, token: str, url: str = ""):
+    import uuid
+    from database.sqlite.connection import get_connection, release_connection
+    from memory import proteger_senha_smtp
+
+    conn = get_connection()
+    try:
+        encrypted = proteger_senha_smtp(token)
+        conn.execute(
+            """INSERT INTO integrations (id, username, service, token_secret, url)
+               VALUES (?, ?, ?, ?, ?)
+               ON CONFLICT(username, service) DO UPDATE SET
+                   token_secret=excluded.token_secret, url=excluded.url, updated_at=CURRENT_TIMESTAMP""",
+            (str(uuid.uuid4()), username, service, encrypted, url),
+        )
+        conn.commit()
+    finally:
+        release_connection(conn)
+
+
+def solicitar_integracao_github_cli(username: str):
+    if _integration_ja_configurada(username, "github"):
+        return
+
+    from modules.permissions.rbac import user_has_permission
+
+    if not user_has_permission(username, "integrations", "github"):
+        return
+
+    resposta = Prompt.ask(
+        "\n[brand]GitHub[/brand] Deseja configurar token do GitHub agora?",
+        choices=["sim", "nao", "pular"],
+        default="pular",
+    )
+    if resposta != "sim":
+        return
+
+    token = getpass("  Token GitHub: ").strip()
+    if token:
+        _salvar_token_integracao(username, "github", token)
+        print_success("Token GitHub salvo.")
+
+
+def solicitar_integracao_gitlab_cli(username: str):
+    if _integration_ja_configurada(username, "gitlab"):
+        return
+
+    from modules.permissions.rbac import user_has_permission
+
+    if not user_has_permission(username, "integrations", "gitlab"):
+        return
+
+    resposta = Prompt.ask(
+        "\n[brand]GitLab[/brand] Deseja configurar token do GitLab agora?",
+        choices=["sim", "nao", "pular"],
+        default="pular",
+    )
+    if resposta != "sim":
+        return
+
+    token = getpass("  Token GitLab: ").strip()
+    url = console.input("[dim]URL opcional (padrão https://gitlab.com):[/dim] ").strip() or "https://gitlab.com"
+    if token:
+        _salvar_token_integracao(username, "gitlab", token, url)
+        print_success("Token GitLab salvo.")
+
+
 def solicitar_credenciais_ia_cli(username: str, force: bool = False) -> bool:
     if not force and usuario_tem_credenciais_ia(username):
         return True
@@ -139,6 +220,8 @@ def registrar_usuario_cli():
 
     salvar_login_local(username, token)
     solicitar_credenciais_ia_cli(username)
+    solicitar_integracao_github_cli(username)
+    solicitar_integracao_gitlab_cli(username)
     print_success(f"Conta criada. Sessao iniciada como [bold]{username}[/bold].")
     return username, token, session_id
 
@@ -153,6 +236,8 @@ def tentar_auto_login():
         session_id = obter_session_id_por_token(token) or criar_sessao(usuario_ativo, token)
         salvar_login_local(usuario_ativo, token)
         solicitar_credenciais_ia_cli(usuario_ativo)
+        solicitar_integracao_github_cli(usuario_ativo)
+        solicitar_integracao_gitlab_cli(usuario_ativo)
         print_success(f"Sessao restaurada: [bold]{usuario_ativo}[/bold]")
         return usuario_ativo, token, session_id
     return None
@@ -181,6 +266,8 @@ def login_cli():
                 session_id = session_id or obter_session_id_por_token(token) or criar_sessao(username, token)
                 salvar_login_local(username, token)
                 solicitar_credenciais_ia_cli(username)
+                solicitar_integracao_github_cli(username)
+                solicitar_integracao_gitlab_cli(username)
                 print_success(f"Bem-vindo de volta, [bold]{username}[/bold].")
                 return username, token, session_id
 
