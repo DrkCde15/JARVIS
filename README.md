@@ -1,72 +1,112 @@
-# J.A.R.V.I.S - System Assistant
+# 🤖 J.A.R.V.I.S — Assistente Corporativo com IA
 
-Assistente pessoal em Python com interface CLI, automacao de tarefas, mensageria, analise de arquivos, voz e integracao com IA.
+Assistente pessoal inteligente com **CLI por texto/voz**, **API REST**, **interface web (Streamlit)**, **RAG**, **RBAC**, **geração de documentos**, **integração GitHub/GitLab**, **análise de código** e **sandbox Docker**.
 
-## Stack atual
+---
 
-- IA: provedores OpenAI-compativeis
-- Interface: CLI
-- NLP local: spaCy
-- Automacao web
-- Banco de dados: SQLite
-- Mensageria
-- Analise de arquivos
-- Analise de conteudo de sites
-- Agenda de tarefas
-- Geracao de codigo
-- Acesso a arquivos e apps do sistema
+## 🧠 Stack
 
-## Funcionalidades principais
+| Camada | Tecnologia |
+|--------|-----------|
+| 🧩 **IA** | Groq / OpenAI / OpenRouter (provedores OpenAI-compatíveis) |
+| 🖥️ **CLI** | Rich (terminal) + agente ReAct com 18 ferramentas |
+| 🌐 **API** | FastAPI + JWT + RBAC |
+| 🎨 **Web** | Streamlit (painel interativo) |
+| 🗄️ **Banco** | SQLite + ChromaDB (RAG vetorial) |
+| 📦 **Sandbox** | Docker (fallback local) para execução de código |
+| 🐙 **Integrações** | GitHub REST API + GitLab REST API |
 
-- Chat com IA em portugues por texto
-- Entrada por voz usando o comando `ouvir`
-- Abertura de sites e comandos de automacao
-- Envio de WhatsApp
-- Envio de e-mail
-- Analise de conteudo de sites (web scraping)
-- Analise de arquivos (TXT, PDF, DOCX, XLSX, CSV, JSON, PPTX)
-- Agenda com persistencia
-- Modo agente com planejamento, ferramentas e registro de tarefas
-- Credenciais de IA por usuario, com suporte a provedores OpenAI-compatible
+---
 
-## Observacao importante sobre imagem
+## ✨ Funcionalidades
 
-No estado atual, o fluxo de IA esta configurado para chat textual com `groq/compound` e `groq/compound-mini`.  
-Com isso, o comando de analise de imagem retorna mensagem de indisponibilidade nesse modo.
+### 🗣️ Chat com IA
+- Chat por **texto** ou **voz** em português
+- Contexto do usuário injetado no prompt (nome, área, papéis)
+- Suporte a múltiplos provedores (Groq, OpenAI, OpenRouter)
+- Credenciais de IA por usuário
 
-## Requisitos
+### 🎯 Agente Autônomo (ReAct)
+- Planeja **5 passos** por tarefa
+- **18 ferramentas** disponíveis: abrir sites, pesquisar, PowerShell, analisar código, GitHub, GitLab, templates, executar código, etc.
+- Pede **confirmação** antes de ações sensíveis
+- Registra tarefas no banco
 
-- Python 3.13+
-- Windows (projeto atual com automacoes voltadas para Windows)
-- SQLite local via biblioteca padrao do Python
+### 📄 RAG — Base de Conhecimento
+- Upload de **PDF, DOCX, PPTX, TXT, MD**
+- Indexação vetorial via **ChromaDB**
+- **Busca semântica** com fallback SQLite
+- **Filtro por departamento**: marketing vê só docs de marketing, admin vê tudo
 
-## Instalacao
+### 🔐 RBAC — Controle de Acesso
+| Papel | Acesso |
+|-------|--------|
+| 👑 **admin** | Tudo |
+| 🛠️ **tech** | Tudo exceto admin; GitHub/GitLab |
+| 📢 **marketing** | Docs de marketing, templates marketing |
+| 💰 **finance** | Docs financeiros, templates finance |
+| ⚖️ **legal** | Docs jurídicos, templates legal |
+| 👥 **rh** | Docs RH, templates RH |
+| 👤 **user** | Próprios documentos, templates genéricos |
 
-1. Criar/ativar ambiente virtual (opcional, recomendado):
+### 📝 Geração de Documentos
+- **DOCX** (python-docx) com títulos, tabelas, código formatado
+- **PDF** (reportlab)
+- **PPTX** (python-pptx)
+- **Templates por papel**: 6 templates pré-definidos com placeholders
 
+### 🐙 Integração GitHub / GitLab
+- Tokens criptografados (Fernet) por usuário
+- Listar repositórios/projetos, commits, PRs/MRs, diff
+- Restrito ao perfil **tech**
+
+### 🔍 Análise de Código
+- Suporte a **30+ extensões** (.py, .js, .ts, .tsx, .java, .go, .rs, .rb, .php, .c, .cpp, .yaml, .tf, etc.)
+- Executa linters via PowerShell: **ruff, mypy, pytest, eslint**
+- Prompt estruturado: propósito, bugs, sugestões, complexidade
+- **Histórico salvo no banco** para consulta posterior
+
+### 🧪 Sandbox de Execução
+- Executa código em **Python, JavaScript, TypeScript, Go, Rust, Ruby, PHP**
+- Prioriza **Docker** (sandbox isolado); fallback local
+- Timeout de 30s
+- Requer confirmação do usuário
+
+### 🎤 Comandos de Voz
+- Microfone comando `/ouvir`
+- Síntese de resposta
+
+### 📋 Agenda
+- CRUD completo de tarefas
+- Lembretes por data/hora
+- Verificação de tarefas atrasadas
+
+---
+
+## 🚀 Instalação
+
+### 1. Ambiente virtual
 ```powershell
 python -m venv jenv
 .\jenv\Scripts\activate
 ```
 
-2. Instalar dependencias:
-
+### 2. Dependências
 ```powershell
 pip install -r requirements.txt
 ```
 
-3. Instalar navegador do Playwright:
-
+### 3. Navegador (Playwright) — opcional
 ```powershell
 python -m playwright install chromium
 ```
 
-## Configuracao do `.env`
+---
 
-Exemplo minimo:
+## ⚙️ Configuração (.env)
 
 ```env
-SECRET_KEY=seu_secret
+SECRET_KEY=seu_secret_aqui
 API_GROQ=sua_chave_groq
 MODEL_NAME=groq/compound-mini
 GROQ_BASE_URL=https://api.groq.com/openai/v1
@@ -74,74 +114,214 @@ GROQ_TIMEOUT=30
 JARVIS_DB_PATH=jarvis.sqlite3
 ```
 
-Se `JARVIS_DB_PATH` nao for definido, o JARVIS cria `jarvis.sqlite3` na raiz do projeto.
-Para copiar dados de uma instalacao MySQL antiga, mantenha as variaveis `MYSQL_*` no `.env`,
-instale `pymysql` somente para a migracao e rode:
+> ⚠️ A SECRET_KEY padrão `JARVISTHEFUTURE` é fraca. Troque antes de usar em produção.
 
-```powershell
-python -m pip install pymysql
-python scripts/migrate_mysql_to_sqlite.py
-```
+---
 
-## Execucao
+## 🎮 Como Usar
 
+### CLI (modo clássico)
 ```powershell
 python main.py
 ```
 
-Depois de entrar no CLI, use:
-
-```text
-ouvir
+Comandos no chat:
+```
+analise o arquivo main.py          → análise de código com linters
+analise o código ..                → roteia para o agente (ferramenta analyse_code)
+execute print("oi") em python      → sandbox Docker
+liste meus repositórios do GitHub  → agente → GitHub
+gere um release de imprensa        → agente → template marketing
 ```
 
-para ativar o microfone e processar o comando falado.
-
-### Provedores de IA
-
-Ao criar conta ou entrar com um usuario sem credenciais salvas, o JARVIS pergunta:
-
-- provedor: `groq`, `openai`, `openrouter` ou `custom`
-- chave da API
-- modelo
-- base URL opcional
-
-Use `/api` para trocar essas credenciais depois.
-
-### Tarefas compostas
-
-No modo normal, o JARVIS detecta pedidos com varias etapas e usa o agente automaticamente.
-
-Exemplo:
-
-```text
-liste meus arquivos PDF em Documentos e analise o mais relevante
-pesquise sobre linux
-pesquise sobre linux no brave
-abra guia anonima no brave e pesquise sobre linux
-inicie o brave e pesquise sobre linux
+### API REST
+```powershell
+python -m api.server
+# http://localhost:8000 — redireciona para /app
+# http://localhost:8000/docs — Swagger
 ```
 
-O agente planeja uma etapa por vez, executa ferramentas permitidas, registra a tarefa no SQLite e pede confirmacao antes de acoes sensiveis. Para comandos PowerShell, ele mostra o comando exato e so executa depois de autorizacao.
+### Web (Streamlit)
+```powershell
+# Terminal 1: API
+python -m api.server
 
-## Estrutura resumida
+# Terminal 2: Streamlit
+streamlit run streamlit_app.py
+```
 
-- `main.py`: CLI, login e fluxo principal
-- `ai_service.py`: integracao com provedores OpenAI-compativeis e geracao de resposta
-- `commands/`: comandos de automacao, analise e utilitarios
-- `memory.py`: persistencia de sessoes, mensagens e logs
+### Testes
+```powershell
+python -m pytest tests/ -v    # 40 testes
+```
 
-## Notas de desenvolvimento
+---
 
-- O projeto carrega variaveis com `python-dotenv`.
-- O NLP local usa spaCy com o modelo `pt_core_news_sm`; se o modelo nao carregar, o sistema usa um tokenizer simples em portugues.
-- O `ai_service.py` valida modelo contra allowlist:
-  - `groq/compound`
-  - `groq/compound-mini`
-- Se `MODEL_NAME` vier diferente, o fallback atual e `groq/compound-mini`.
+## 🏗️ Estrutura do Projeto
 
-## Autor
+```
+C:/
+├── main.py                    ← 🖥️ CLI: login, loop de chat, comandos de voz
+├── agent.py                   ← 🧠 Agente ReAct (planejador 5 steps)
+├── tools.py                   ← 🛠️ 18 ferramentas (site, powershell, github, gitlab, análise, templates, sandbox...)
+├── ai_service.py              ← 🤖 Provedor de IA (sistema de prompt com contexto do usuário)
+├── cli_design.py              ← 🎨 Componentes Rich (spinners, cores, help)
+├── intent_manager.py          ← 🧩 Classificador de intenções via IA
+├── memory.py                  ← 🗄️ ORM SQLite legado (usuários, sessões, chat)
+├── streamlit_app.py           ← 🌐 Interface web Streamlit
+│
+├── api/                       ← 🌍 API REST (FastAPI)
+│   ├── server.py              ← Monta app, CORS, static files
+│   ├── middleware.py          ← 🔐 JWT + RBAC (get_current_user, require_permission)
+│   ├── static/index.html      ← SPA vanilla fallback (http://localhost:8000/app)
+│   └── routes/
+│       ├── auth.py            → POST /register, /login
+│       ├── permissions.py     → CRUD roles, permissions
+│       ├── rag.py             → POST /upload, /search; GET /documents
+│       ├── documents.py       → POST /docx, /pdf, /pptx, /templates, /templates/generate
+│       ├── github.py          → POST /configure, GET /repos
+│       └── gitlab.py          → POST /configure, GET /projects
+│
+├── commands/                  ← ⌨️ Lógica dos comandos da CLI
+│   ├── __init__.py            ← Roteador: 20+ regex + intent_manager + agente
+│   ├── files.py               ← 📁 Ler/escrever/analisar arquivos (+ código)
+│   ├── ai_analysis.py         ← 🌐 Analisar site, imagem
+│   ├── agenda.py              ← 📋 CRUD de tarefas
+│   ├── communication.py       ← 💬 WhatsApp, e-mail
+│   ├── media.py               ← 🎵 YouTube, abrir sites
+│   ├── software.py            ← 💻 Instalar/desinstalar apps
+│   ├── system_utils.py        ← ⏰ Hora, data, IP, lixo, gravação
+│   └── voice.py               ← 🎤 Síntese/reconhecimento de voz
+│
+├── database/sqlite/           ← 🗄️ Camada SQLite
+│   ├── connection.py          ← Pool de conexões
+│   ├── schema.py              ← 9 tabelas (roles, permissions, documents, code_analysis, integrations...)
+│   └── migrations.py          ← Seed: 8 papéis, 22 permissões
+│
+├── modules/                   ← 🧩 Módulos de negócio
+│   ├── permissions/rbac.py     ← 🔐 RBAC completo
+│   ├── audit/logger.py        ← 📝 Log de auditoria
+│   ├── rag/
+│   │   ├── engine.py          ← ChromaDB (indexar, buscar com filtro department)
+│   │   ├── processor.py       ← Extrair PDF/DOCX/PPTX/TXT/MD + chunking
+│   │   └── search.py          ← Busca semântica + fallback SQLite
+│   ├── documents/
+│   │   ├── docx_generator.py  ← Geração DOCX
+│   │   ├── pdf_generator.py   ← Geração PDF
+│   │   ├── pptx_generator.py  ← Geração PPTX
+│   │   ├── template_engine.py ← Templates com placeholders
+│   │   └── templates/         ← 6 templates (marketing, rh, finance, legal, tech)
+│   ├── code_analysis/         ← Histórico de análises de código
+│   └── sandbox/               ← Execução Docker/local de código
+│
+├── integrations/              ← 🔗 Clientes REST
+│   ├── github/client.py       ← GitHubClient (repos, commits, PRs, diff)
+│   └── gitlab/client.py       ← GitLabClient (projects, commits, MRs, pipelines)
+│
+├── tests/                     ← ✅ 40 testes (pytest)
+├── chroma_db/                 ← 🗄️ Persistência ChromaDB (gitignored)
+├── uploads/                   ← 📤 Uploads da API
+├── output/                    ← 📥 Documentos gerados
+└── pyproject.toml             ← 📦 Dependências
+```
 
-Julio Cesar  
-Email: [jcesarsantana215@gmail.com](mailto:jcesarsantana215@gmail.com)  
-LinkedIn: [julio-santana-ads](https://www.linkedin.com/in/julio-santana-ads/)
+---
+
+## 🧭 Fluxo de Dados
+
+```
+                    ┌──────────────┐
+                    │   👤 VOCÊ    │
+                    └──┬───────┬───┘
+               CLI ou  │       │  Web (Streamlit)
+                       │       │
+                       ▼       ▼
+              ┌─────────────────────┐
+              │  main.py / app.py   │
+              └────────┬────────────┘
+                       │
+              ┌────────▼────────┐
+              │  agent.py       │ ← 🤖 Planejador ReAct
+              │  (5 steps)      │
+              └────────┬────────┘
+                       │ chama ferramentas
+                       ▼
+              ┌─────────────────┐
+              │   tools.py      │ ← 🛠️ 18 ferramentas
+              │   (c/ RBAC)     │
+              └──┬──────────┬───┘
+                 │          │
+         ┌───────▼──┐  ┌────▼────────┐
+         │ Módulos  │  │ Integrações │
+         │ internos │  │ GitHub/GitLab│
+         └───────┬──┘  └────┬────────┘
+                 │          │
+         ┌───────▼──────────▼────┐
+         │ SQLite + ChromaDB     │
+         └───────────────────────┘
+```
+
+---
+
+## 📊 APIs Disponíveis
+
+| Método | Rota | Descrição |
+|--------|------|-----------|
+| `POST` | `/api/v1/auth/register` | Criar conta |
+| `POST` | `/api/v1/auth/login` | Login (retorna JWT) |
+| `POST` | `/api/v1/rag/upload` | Upload de documento |
+| `POST` | `/api/v1/rag/search` | Busca semântica |
+| `GET` | `/api/v1/rag/documents` | Listar documentos (filtrados por role) |
+| `POST` | `/api/v1/documents/docx` | Gerar DOCX |
+| `POST` | `/api/v1/documents/pdf` | Gerar PDF |
+| `POST` | `/api/v1/documents/pptx` | Gerar PPTX |
+| `GET` | `/api/v1/documents/templates` | Listar templates (por role) |
+| `POST` | `/api/v1/documents/templates/generate` | Gerar de template |
+| `POST` | `/api/v1/github/configure` | Salvar token GitHub |
+| `GET` | `/api/v1/github/repos` | Listar repositórios |
+| `POST` | `/api/v1/gitlab/configure` | Salvar token GitLab |
+| `GET` | `/api/v1/gitlab/projects` | Listar projetos |
+| `GET` | `/health` | Health check |
+
+---
+
+## 🔒 Segurança
+
+- **Senhas**: hash com algoritmo seguro
+- **Tokens GitHub/GitLab**: criptografados com Fernet
+- **JWT**: com expiração configurável
+- **RBAC**: 8 papéis, 22 permissões, verificação em cada rota e ferramenta
+- **Confirmação**: toda ação sensível requer `SIM` do usuário
+- **Sandbox**: execução de código em Docker (isolamento) com timeout
+
+---
+
+## 🧪 Testes
+
+```powershell
+python -m pytest tests/ -v
+```
+
+40 testes cobrindo:
+- ✅ Autenticação (registro, login, duplicatas)
+- ✅ RBAC (criar papéis, atribuir, verificar permissões)
+- ✅ RAG (extração de texto, chunking, engine)
+- ✅ Documentos (geração DOCX, PDF, PPTX)
+- ✅ Integrações (GitHubClient, GitLabClient)
+
+---
+
+## 👨‍💻 Autor
+
+**Julio Cesar**  
+📧 [jcesarsantana215@gmail.com](mailto:jcesarsantana215@gmail.com)  
+🔗 [linkedin.com/in/julio-santana-ads](https://www.linkedin.com/in/julio-santana-ads/)
+
+---
+
+## 📝 Notas
+
+- ⚠️ A `SECRET_KEY` padrão no `.env` é fraca (`JARVISTHEFUTURE`). Troque antes de produção.
+- 🐍 PyPDF2 está depreciado; o sistema usa **pymupdf** como parser primário de PDF.
+- 🐳 O sandbox Docker precisa do Docker instalado. Se não estiver disponível, faz fallback para execução local com timeout.
+- 🗄️ ChromaDB persiste em `chroma_db/` (ignorado pelo git).
